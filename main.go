@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"encoding/json"
+	"path/filepath"
+	"html/template"
 	"time"
 	"os"
 	_ "github.com/mattn/go-sqlite3"
@@ -26,7 +28,6 @@ type EventRow struct {
 	Count int64
 }
 
-
 func dailyEvent(sodTimestamp int64, msgEvent string) {
 	row := db.QueryRow("select * from days where timestamp = ? and event = ?", sodTimestamp, msgEvent)
 
@@ -44,7 +45,6 @@ func dailyEvent(sodTimestamp int64, msgEvent string) {
 	}
 }
 
-
 func hourEvent(sohTimestamp int64, msgEvent string) {
 	row := db.QueryRow("select * from hours where timestamp = ? and event = ?", sohTimestamp, msgEvent)
 
@@ -61,7 +61,6 @@ func hourEvent(sohTimestamp int64, msgEvent string) {
 		db.Exec("update hours set count = ? where id = ?", nextCount, rowId)
 	}
 }
-
 
 func minuteEvent(somTimestamp int64, msgEvent string) {
 	row := db.QueryRow("select * from minutes where timestamp = ? and event = ?", somTimestamp, msgEvent)
@@ -110,16 +109,58 @@ func handleEvent(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "OK")
 }
 
+func serveTemplate(w http.ResponseWriter, r *http.Request) {
+	lp := filepath.Join("templates", "layout.html")
+	fp := filepath.Join("templates", filepath.Clean(r.URL.Path))
+
+	// Return a 404 if the template doesn't exist
+	info, err := os.Stat(fp)
+	if err != nil {
+		if os.IsNotExist(err) {
+			http.NotFound(w, r)
+			return
+		}
+	}
+
+	// Return a 404 if the request is for a directory
+	if info.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+
+	tmpl, err := template.ParseFiles(lp, fp)
+	if err != nil {
+		// Log the detailed error
+		log.Print(err.Error())
+		// Return a generic "Internal Server Error" message
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	err = tmpl.ExecuteTemplate(w, "layout", nil)
+	if err != nil {
+		log.Print(err.Error())
+		http.Error(w, http.StatusText(500), 500)
+	}
+}
+
+
+
 func main() {	
 	db, _ = sql.Open("sqlite3", "./events.db")
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/event", handleEvent)
+	fs := http.FileServer(http.Dir("./static"))
+
+	// mux := http.NewServeMux()
+	// mux.HandleFunc("/event", handleEvent)
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	http.HandleFunc("/", serveTemplate)
+
 
 	fmt.Println("Starting server on port 3333")
 
-	err := http.ListenAndServe(":3333", mux)
-
+	// err := http.ListenAndServe(":3333", mux)
+	err := http.ListenAndServe(":3333", nil)
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Printf("server closed\n")
 	} else if err != nil {
