@@ -17,15 +17,50 @@ import (
 
 var db *sql.DB
 
+
 type Message struct {
 	Event string
 }
+
 
 type EventRow struct {
 	Id int64
 	Timestamp int64
 	Event string
 	Count int64
+}
+
+
+type StatRequest struct {
+	Event string
+}
+
+func getDailyEvent(event string) {
+	log.Print("Get dailies for ", event)
+
+	currentTime := time.Now()
+
+	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location(), )
+	toTimestamp := startOfDay.Unix()
+
+	fromTimestamp := toTimestamp - 2592000 
+
+	rows, err := db.Query("select * from days where timestamp between ? and ? ", fromTimestamp, toTimestamp)
+	if err != nil {
+		panic(err)
+	}
+
+	for rows.Next() {
+		var eventRow EventRow
+		err = rows.Scan(&eventRow.Id, &eventRow.Timestamp, &eventRow.Event, &eventRow.Count)
+		if err != nil {
+			panic(err)
+		}
+
+		log.Print(eventRow.Timestamp)
+		log.Print(eventRow.Count)
+	}
+	
 }
 
 func dailyEvent(sodTimestamp int64, msgEvent string) {
@@ -45,6 +80,7 @@ func dailyEvent(sodTimestamp int64, msgEvent string) {
 	}
 }
 
+
 func hourEvent(sohTimestamp int64, msgEvent string) {
 	row := db.QueryRow("select * from hours where timestamp = ? and event = ?", sohTimestamp, msgEvent)
 
@@ -62,6 +98,7 @@ func hourEvent(sohTimestamp int64, msgEvent string) {
 	}
 }
 
+
 func minuteEvent(somTimestamp int64, msgEvent string) {
 	row := db.QueryRow("select * from minutes where timestamp = ? and event = ?", somTimestamp, msgEvent)
 
@@ -78,6 +115,7 @@ func minuteEvent(somTimestamp int64, msgEvent string) {
 		db.Exec("update minutes set count = ? where id = ?", nextCount, rowId)
 	}
 }
+
 
 func handleEvent(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
@@ -108,6 +146,7 @@ func handleEvent(w http.ResponseWriter, r *http.Request) {
 
 	io.WriteString(w, "OK")
 }
+
 
 func serveTemplate(w http.ResponseWriter, r *http.Request) {
 	lp := filepath.Join("templates", "layout.html")
@@ -145,6 +184,33 @@ func serveTemplate(w http.ResponseWriter, r *http.Request) {
 }
 
 
+func handleAPI(w http.ResponseWriter, r *http.Request) {
+	// body, err := io.ReadAll(r.Body)
+	// if err != nil {
+	// 	log.Printf("Error reading request body: %v", err)
+	// 	http.Error(w, "Unable to read request body", http.StatusBadRequest)
+	// 	return
+	// }
+	// defer r.Body.Close() 
+
+	// bodystr := string(body)
+
+	if (r.URL.Path == "/api/stat/daily/") {
+
+		var statRequest StatRequest
+		decoder := json.NewDecoder(r.Body)
+
+		err := decoder.Decode(&statRequest)
+		if err != nil {
+			panic(err)
+		}
+
+
+		getDailyEvent(statRequest.Event)
+	}
+
+}
+
 
 func main() {	
 	db, _ = sql.Open("sqlite3", "./events.db")
@@ -152,10 +218,11 @@ func main() {
 	fs := http.FileServer(http.Dir("./static"))
 
 	// mux := http.NewServeMux()
-	// mux.HandleFunc("/event", handleEvent)
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.HandleFunc("/", serveTemplate)
 
+	http.HandleFunc("/event", handleEvent)
+	http.HandleFunc("/", serveTemplate)
+	http.HandleFunc("/api/", handleAPI)
 
 	fmt.Println("Starting server on port 3333")
 
