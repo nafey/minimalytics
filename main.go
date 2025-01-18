@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
 	_ "github.com/mattn/go-sqlite3"
 	// "github.com/u-root/u-root/pkg/curl"
 )
@@ -29,7 +28,6 @@ type StatRequest struct {
 
 type DateEvent struct {
 	Id int64
-	Timestamp int64
 	Date string
 	Event string
 	Count int64
@@ -37,7 +35,6 @@ type DateEvent struct {
 
 type HourEvent struct {
 	Id int64
-	Timestamp int64
 	Hour string
 	Event string
 	Count int64
