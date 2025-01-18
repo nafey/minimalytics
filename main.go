@@ -2,17 +2,19 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
-	"log"
-	"errors"
-	"io"
-	"net/http"
 	"encoding/json"
-	"path/filepath"
+	"errors"
+	"fmt"
 	"html/template"
-	"time"
+	"io"
+	"log"
+	"net/http"
 	"os"
+	"path/filepath"
+	"time"
+
 	_ "github.com/mattn/go-sqlite3"
+	// "github.com/u-root/u-root/pkg/curl"
 )
 
 var db *sql.DB
@@ -26,30 +28,38 @@ type Message struct {
 type EventRow struct {
 	Id int64
 	Timestamp int64
+	Date string
 	Event string
 	Count int64
 }
+
 
 type StatRequest struct {
 	Event string
 }
 
-type StatItem struct {
-	Timestamp int64
-	Count int64
+
+type DateStatItem struct {
+	Date string `json:"date"`
+	Count int64 `json:"count"`
 }
 
-func dailyEvent(sodTimestamp int64, msgEvent string) {
-	row := db.QueryRow("select * from days where timestamp = ? and event = ?", sodTimestamp, msgEvent)
+
+func dailyEvent(msgEvent string) {
+	sodTimestamp := int64(0)
+
+	currentTime := time.Now()
+	date := currentTime.Format("2006-01-02")
+
+	row := db.QueryRow("select * from days where date = ? and event = ?", date, msgEvent)
 
 	var eventRow EventRow
-
-	err := row.Scan(&eventRow.Id, &eventRow.Timestamp, &eventRow.Event, &eventRow.Count)
+	err := row.Scan(&eventRow.Id, &eventRow.Timestamp, &eventRow.Date, &eventRow.Event, &eventRow.Count)
 	if err != nil {
-		// create a row
-		db.Exec("insert into days (timestamp, event, count) values (?, ?, ?)", sodTimestamp, msgEvent, 1)
+		db.Exec("insert into days (timestamp, date, event, count) values (?, ?, ?, ?)", sodTimestamp, date, msgEvent, 1)
+
 	} else {
-		// increment a row
+
 		rowId := eventRow.Id
 		nextCount := eventRow.Count + 1
 		db.Exec("update days set count = ? where id = ?", nextCount, rowId)
@@ -101,9 +111,8 @@ func handleEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	msgEvent := t.Event
 
-	// log.Println("Event Receieved", msgEvent)
+	msgEvent := t.Event
 
 	currentTime := time.Now()
 
@@ -113,12 +122,12 @@ func handleEvent(w http.ResponseWriter, r *http.Request) {
 	startOfHour := currentTime.Truncate(time.Hour)
 	sohTimestamp := startOfHour.Unix()
 
-	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location(), )
-	sodTimestamp := startOfDay.Unix()
+	// startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location(), )
+	// sodTimestamp := startOfDay.Unix()
 
 	minuteEvent(somTimestamp, msgEvent)
 	hourEvent(sohTimestamp, msgEvent)
-	dailyEvent(sodTimestamp, msgEvent)
+	dailyEvent(msgEvent)
 
 	io.WriteString(w, "OK")
 }
@@ -159,67 +168,51 @@ func serveTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getDailyStat(event string) [30]StatItem{
-	// log.Print("Get dailies for ", event)
-
+func getDailyStat(event string) [30]DateStatItem{
 	currentTime := time.Now()
+	toDate := currentTime.Format("2006-01-02")
+	fromDate := currentTime.AddDate(0, 0, -30).Format("2006-01-02")
+	log.Println(fromDate)
 
-	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location(), )
-	toTimestamp := startOfDay.Unix()
-
-	fromTimestamp := toTimestamp - 2592000 
-
-	rows, err := db.Query("select * from days where timestamp between ? and ? and event = ?", fromTimestamp, toTimestamp, event)
+	rows, err := db.Query("select * from days where date between ? and ? and event = ?", fromDate, toDate, event)
 	if err != nil {
 		panic(err)
 	}
 
-	countMap := make(map[int64]int64)
-
+	countMap := make(map[string]int64)
 	for rows.Next() {
 		var eventRow EventRow
-		err = rows.Scan(&eventRow.Id, &eventRow.Timestamp, &eventRow.Event, &eventRow.Count)
+		err = rows.Scan(&eventRow.Id, &eventRow.Timestamp, &eventRow.Date, &eventRow.Event, &eventRow.Count)
 		if err != nil {
 			panic(err)
 		}
 
-		countMap[eventRow.Timestamp] = eventRow.Count
+		countMap[eventRow.Date] = eventRow.Count
 	}
 
-	var statsArray [30]StatItem
-
+	var statsArray [30]DateStatItem
 	for i := 0; i < 30; i++ {
-		iTimestamp := toTimestamp - int64(i * 60 * 60 * 24)
+		iDate := currentTime.AddDate(0, 0, -1 * i).Format("2006-01-02")
 		iCount := int64(0)
 		
-		realCount, ok := countMap[iTimestamp]
-
+		realCount, ok := countMap[iDate]
 		if ok {
 			iCount = realCount
 		}
 
-		iStatItem := StatItem{
-			Timestamp: iTimestamp,
+		iStatItem := DateStatItem{
+			Date: iDate,
 			Count: iCount,
 		}
 
 		statsArray[i] = iStatItem
 	}
 
-	// log.Println(statsArray)
 	return statsArray
 }
 
 func handleAPI(w http.ResponseWriter, r *http.Request) {
-	// body, err := io.ReadAll(r.Body)
-	// if err != nil {
-	// 	log.Printf("Error reading request body: %v", err)
-	// 	http.Error(w, "Unable to read request body", http.StatusBadRequest)
-	// 	return
-	// }
-	// defer r.Body.Close() 
-
-	// bodystr := string(body)
+	w.Header().Set("Content-Type", "application/json")
 
 	if (r.URL.Path == "/api/stat/daily/") {
 
@@ -233,7 +226,6 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 
 
 		stats := getDailyStat(statRequest.Event)
-		w.Header().Set("Content-Type", "application/json")
 
 		if err := json.NewEncoder(w).Encode(stats); err != nil {
 			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
@@ -255,7 +247,7 @@ func main() {
 	http.HandleFunc("/", serveTemplate)
 	http.HandleFunc("/api/", handleAPI)
 
-	fmt.Println("Starting server on port 3333")
+	log.Println("Starting server on port 3333")
 
 	// err := http.ListenAndServe(":3333", mux)
 	err := http.ListenAndServe(":3333", nil)
