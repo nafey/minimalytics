@@ -23,6 +23,10 @@ type Message struct {
 	Event string
 }
 
+type StatRequest struct {
+	Event string
+}
+
 type DateEvent struct {
 	Id int64
 	Timestamp int64
@@ -39,8 +43,11 @@ type HourEvent struct {
 	Count int64
 }
 
-type StatRequest struct {
+type MinuteEvent struct {
+	Id int64
+	Minute string
 	Event string
+	Count int64
 }
 
 type DateStat struct {
@@ -50,6 +57,11 @@ type DateStat struct {
 
 type HourStat struct {
 	Hour string `json:"hour"`
+	Count int64 `json:"count"`
+}
+
+type MinuteStat struct {
+	Minute string `json:"minute"`
 	Count int64 `json:"count"`
 }
 
@@ -84,16 +96,16 @@ func serveTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func dailyEvent(msgEvent string) {
+func dailyEvent(event string) {
 	currentTime := time.Now()
 	date := currentTime.Format("2006-01-02")
 
-	row := db.QueryRow("select * from days where date = ? and event = ?", date, msgEvent)
+	row := db.QueryRow("select * from days where date = ? and event = ?", date, event)
 
 	var eventRow DateEvent
 	err := row.Scan(&eventRow.Id, &eventRow.Date, &eventRow.Event, &eventRow.Count)
 	if err != nil {
-		db.Exec("insert into days (date, event, count) values (?, ?, ?)", date, msgEvent, 1)
+		db.Exec("insert into days (date, event, count) values (?, ?, ?)", date, event, 1)
 
 	} else {
 
@@ -103,17 +115,17 @@ func dailyEvent(msgEvent string) {
 	}
 }
 
-func hourEvent(msgEvent string) {
+func hourEvent(event string) {
 	currentTime := time.Now()
 
 	hour := currentTime.Format("2006-01-02 15:00:00")
-	row := db.QueryRow("select * from hours where hour = ? and event = ?", hour, msgEvent)
+	row := db.QueryRow("select * from hours where hour = ? and event = ?", hour, event)
 
 	var eventRow HourEvent
 
 	err := row.Scan(&eventRow.Id, &eventRow.Hour, &eventRow.Event, &eventRow.Count)
 	if err != nil {
-		db.Exec("insert into hours (hour, event, count) values (?, ?, ?)", hour, msgEvent, 1)
+		db.Exec("insert into hours (hour, event, count) values (?, ?, ?)", hour, event, 1)
 
 	} else {
 		rowId := eventRow.Id
@@ -123,17 +135,21 @@ func hourEvent(msgEvent string) {
 	}
 }
 
-func minuteEvent(somTimestamp int64, msgEvent string) {
-	row := db.QueryRow("select * from minutes where timestamp = ? and event = ?", somTimestamp, msgEvent)
+func minuteEvent(event string) {
+	currentTime := time.Now()
+	minute := currentTime.Format("2006-01-02 15:04:00")
 
-	var eventRow DateEvent
+	log.Println(minute)
 
-	err := row.Scan(&eventRow.Id, &eventRow.Timestamp, &eventRow.Event, &eventRow.Count)
+	row := db.QueryRow("select * from minutes where minute = ? and event = ?", minute, event)
+
+	var eventRow MinuteEvent
+
+	err := row.Scan(&eventRow.Id, &eventRow.Minute, &eventRow.Event, &eventRow.Count)
 	if err != nil {
-		// create a row
-		db.Exec("insert into minutes (timestamp, event, count) values (?, ?, ?)", somTimestamp, msgEvent, 1)
+		db.Exec("insert into minutes (minute, event, count) values (?, ?, ?)", minute, event, 1)
+
 	} else {
-		// increment a row
 		rowId := eventRow.Id
 		nextCount := eventRow.Count + 1
 		db.Exec("update minutes set count = ? where id = ?", nextCount, rowId)
@@ -149,18 +165,57 @@ func handleEvent(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	msgEvent := t.Event
+	event := t.Event
 
-	currentTime := time.Now()
-
-	startOfMinute := currentTime.Truncate(time.Minute)
-	somTimestamp := startOfMinute.Unix()
-
-	minuteEvent(somTimestamp, msgEvent)
-	hourEvent(msgEvent)
-	dailyEvent(msgEvent)
+	minuteEvent(event)
+	hourEvent(event)
+	dailyEvent(event)
 
 	io.WriteString(w, "OK")
+}
+
+func getMinuteStat(event string) [60]MinuteStat {
+
+	currentTime := time.Now()
+	toMinute := currentTime.Format("2006-01-02 15:04:00")
+	fromMinute := currentTime.AddDate(0, 0, -60).Format("2006-01-02 15:04:00")
+
+	rows, err := db.Query("select * from minutes where minute between ? and ? and event = ?", fromMinute, toMinute, event)
+	if err != nil {
+		panic(err)
+	}
+
+	countMap := make(map[string]int64)
+	for rows.Next() {
+		var eventRow MinuteEvent
+		err = rows.Scan(&eventRow.Id, &eventRow.Minute, &eventRow.Event, &eventRow.Count)
+		if err != nil {
+			panic(err)
+		}
+
+		countMap[eventRow.Minute] = eventRow.Count
+	}
+
+	var statsArray [60]MinuteStat
+	for i := 0; i < 60; i++ {
+		// iMinute := currentTime.AddDate(0, 0, -1 * i).Format("2006-01-02")
+		iMinute := currentTime.Add(time.Duration(-i) * time.Minute).Format("2006-01-02 15:04:00")
+		iCount := int64(0)
+		
+		realCount, ok := countMap[iMinute]
+		if ok {
+			iCount = realCount
+		}
+
+		iStatItem := MinuteStat{
+			Minute: iMinute,
+			Count: iCount,
+		}
+
+		statsArray[i] = iStatItem
+	}
+
+	return statsArray
 }
 
 func getHourlyStat(event string) [48]HourStat {
@@ -273,7 +328,15 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
 		}
 
+	} else if (r.URL.Path == "/api/stat/minutes/") {
+		stats := getMinuteStat(statRequest.Event)
+
+		if err := json.NewEncoder(w).Encode(stats); err != nil {
+			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		}
+
 	}
+
 
 }
 
