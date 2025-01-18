@@ -30,37 +30,13 @@ type EventRow struct {
 	Count int64
 }
 
-
 type StatRequest struct {
 	Event string
 }
 
-func getDailyEvent(event string) {
-	log.Print("Get dailies for ", event)
-
-	currentTime := time.Now()
-
-	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location(), )
-	toTimestamp := startOfDay.Unix()
-
-	fromTimestamp := toTimestamp - 2592000 
-
-	rows, err := db.Query("select * from days where timestamp between ? and ? ", fromTimestamp, toTimestamp)
-	if err != nil {
-		panic(err)
-	}
-
-	for rows.Next() {
-		var eventRow EventRow
-		err = rows.Scan(&eventRow.Id, &eventRow.Timestamp, &eventRow.Event, &eventRow.Count)
-		if err != nil {
-			panic(err)
-		}
-
-		log.Print(eventRow.Timestamp)
-		log.Print(eventRow.Count)
-	}
-	
+type StatItem struct {
+	Timestamp int64
+	Count int64
 }
 
 func dailyEvent(sodTimestamp int64, msgEvent string) {
@@ -127,7 +103,7 @@ func handleEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	msgEvent := t.Event
 
-	log.Println("Event Receieved", msgEvent)
+	// log.Println("Event Receieved", msgEvent)
 
 	currentTime := time.Now()
 
@@ -183,6 +159,56 @@ func serveTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getDailyStat(event string) [30]StatItem{
+	// log.Print("Get dailies for ", event)
+
+	currentTime := time.Now()
+
+	startOfDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location(), )
+	toTimestamp := startOfDay.Unix()
+
+	fromTimestamp := toTimestamp - 2592000 
+
+	rows, err := db.Query("select * from days where timestamp between ? and ? and event = ?", fromTimestamp, toTimestamp, event)
+	if err != nil {
+		panic(err)
+	}
+
+	countMap := make(map[int64]int64)
+
+	for rows.Next() {
+		var eventRow EventRow
+		err = rows.Scan(&eventRow.Id, &eventRow.Timestamp, &eventRow.Event, &eventRow.Count)
+		if err != nil {
+			panic(err)
+		}
+
+		countMap[eventRow.Timestamp] = eventRow.Count
+	}
+
+	var statsArray [30]StatItem
+
+	for i := 0; i < 30; i++ {
+		iTimestamp := toTimestamp - int64(i * 60 * 60 * 24)
+		iCount := int64(0)
+		
+		realCount, ok := countMap[iTimestamp]
+
+		if ok {
+			iCount = realCount
+		}
+
+		iStatItem := StatItem{
+			Timestamp: iTimestamp,
+			Count: iCount,
+		}
+
+		statsArray[i] = iStatItem
+	}
+
+	// log.Println(statsArray)
+	return statsArray
+}
 
 func handleAPI(w http.ResponseWriter, r *http.Request) {
 	// body, err := io.ReadAll(r.Body)
@@ -206,7 +232,12 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 		}
 
 
-		getDailyEvent(statRequest.Event)
+		stats := getDailyStat(statRequest.Event)
+		w.Header().Set("Content-Type", "application/json")
+
+		if err := json.NewEncoder(w).Encode(stats); err != nil {
+			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		}
 	}
 
 }
