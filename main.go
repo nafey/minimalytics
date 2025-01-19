@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
 	"html/template"
 	"io"
 	"log"
@@ -12,8 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	_ "github.com/mattn/go-sqlite3"
-	// "github.com/u-root/u-root/pkg/curl"
 )
 
 var db *sql.DB
@@ -22,44 +22,50 @@ type Message struct {
 	Event string
 }
 
+type Response struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
+}
+
 type StatRequest struct {
-	Event string
+	Event string `json:"event"`
 }
 
 type DateEvent struct {
-	Id int64
-	Date string
+	Id    int64
+	Date  string
 	Event string
 	Count int64
 }
 
 type HourEvent struct {
-	Id int64
-	Hour string
+	Id    int64
+	Hour  string
 	Event string
 	Count int64
 }
 
 type MinuteEvent struct {
-	Id int64
+	Id     int64
 	Minute string
-	Event string
-	Count int64
+	Event  string
+	Count  int64
 }
 
 type DateStat struct {
-	Date string `json:"date"`
-	Count int64 `json:"count"`
+	Date  string `json:"date"`
+	Count int64  `json:"count"`
 }
 
 type HourStat struct {
-	Hour string `json:"hour"`
-	Count int64 `json:"count"`
+	Hour  string `json:"hour"`
+	Count int64  `json:"count"`
 }
 
 type MinuteStat struct {
 	Minute string `json:"minute"`
-	Count int64 `json:"count"`
+	Count  int64  `json:"count"`
 }
 
 func serveTemplate(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +204,7 @@ func getMinuteStat(event string) [60]MinuteStat {
 		// iMinute := currentTime.AddDate(0, 0, -1 * i).Format("2006-01-02")
 		iMinute := currentTime.Add(time.Duration(-i) * time.Minute).Format("2006-01-02 15:04:00")
 		iCount := int64(0)
-		
+
 		realCount, ok := countMap[iMinute]
 		if ok {
 			iCount = realCount
@@ -206,7 +212,7 @@ func getMinuteStat(event string) [60]MinuteStat {
 
 		iStatItem := MinuteStat{
 			Minute: iMinute,
-			Count: iCount,
+			Count:  iCount,
 		}
 
 		statsArray[i] = iStatItem
@@ -241,14 +247,14 @@ func getHourlyStat(event string) [48]HourStat {
 		// iHour := currentTime.AddDate(0, 0, -1 * i).Format("2006-01-02")
 		iHour := currentTime.Add(time.Duration(-i) * time.Hour).Format("2006-01-02 15:00:00")
 		iCount := int64(0)
-		
+
 		realCount, ok := countMap[iHour]
 		if ok {
 			iCount = realCount
 		}
 
 		iStatItem := HourStat{
-			Hour: iHour,
+			Hour:  iHour,
 			Count: iCount,
 		}
 
@@ -258,7 +264,7 @@ func getHourlyStat(event string) [48]HourStat {
 	return statsArray
 }
 
-func getDailyStat(event string) [30]DateStat{
+func getDailyStat(event string) [30]DateStat {
 	currentTime := time.Now()
 	toDate := currentTime.Format("2006-01-02")
 	fromDate := currentTime.AddDate(0, 0, -30).Format("2006-01-02")
@@ -281,16 +287,16 @@ func getDailyStat(event string) [30]DateStat{
 
 	var statsArray [30]DateStat
 	for i := 0; i < 30; i++ {
-		iDate := currentTime.AddDate(0, 0, -1 * i).Format("2006-01-02")
+		iDate := currentTime.AddDate(0, 0, -1*i).Format("2006-01-02")
 		iCount := int64(0)
-		
+
 		realCount, ok := countMap[iDate]
 		if ok {
 			iCount = realCount
 		}
 
 		iStatItem := DateStat{
-			Date: iDate,
+			Date:  iDate,
 			Count: iCount,
 		}
 
@@ -300,53 +306,110 @@ func getDailyStat(event string) [30]DateStat{
 	return statsArray
 }
 
-func handleAPI(w http.ResponseWriter, r *http.Request) {
-	var statRequest StatRequest
-	decoder := json.NewDecoder(r.Body)
+func middleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-	err := decoder.Decode(&statRequest)
-	if err != nil {
-		panic(err)
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next(w, r)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	if (r.URL.Path == "/api/stat/daily/") {
-		stats := getDailyStat(statRequest.Event)
-
-		if err := json.NewEncoder(w).Encode(stats); err != nil {
-			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
-		}
-
-	} else if (r.URL.Path == "/api/stat/hourly/") {
-		stats := getHourlyStat(statRequest.Event)
-
-		if err := json.NewEncoder(w).Encode(stats); err != nil {
-			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
-		}
-
-	} else if (r.URL.Path == "/api/stat/minutes/") {
-		stats := getMinuteStat(statRequest.Event)
-
-		if err := json.NewEncoder(w).Encode(stats); err != nil {
-			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
-		}
-
-	}
-
-
 }
 
-func main() {	
+func handleAPI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var statRequest StatRequest
+	var response Response
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading body: %v", err)
+		http.Error(w, "Unable to read body", http.StatusInternalServerError)
+		return
+	}
+	defer r.Body.Close()
+
+	log.Print(string(body))
+
+	if string(body) == "" {
+
+		response = Response{
+			Status:  "OK",
+			Message: "Request received",
+			Data:    nil,
+		}
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		}
+
+		return
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	err = decoder.Decode(&statRequest)
+	if err != nil {
+		log.Print(err)
+		http.Error(w, "Error decoding request", http.StatusBadRequest)
+	}
+
+	if r.URL.Path == "/api/stat/daily/" {
+
+		stats := getDailyStat(statRequest.Event)
+
+		response = Response{
+			Status:  "OK",
+			Message: "Daily stat",
+			Data:    stats,
+		}
+
+	} else if r.URL.Path == "/api/stat/hourly/" {
+		stats := getHourlyStat(statRequest.Event)
+
+		response = Response{
+			Status:  "OK",
+			Message: "Hourly stat",
+			Data:    stats,
+		}
+
+	} else if r.URL.Path == "/api/stat/minutes/" {
+		stats := getMinuteStat(statRequest.Event)
+
+		response = Response{
+			Status:  "OK",
+			Message: "Minute stat",
+			Data:    stats,
+		}
+
+	} else {
+		response = Response{
+			Status:  "OK",
+			Message: "Not implemented",
+			Data:    nil,
+		}
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+	}
+}
+
+func main() {
 	db, _ = sql.Open("sqlite3", "./events.db")
 
-	fs := http.FileServer(http.Dir("./static"))
+	// fs := http.FileServer(http.Dir("./static"))
 
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	// http.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	http.HandleFunc("/event", handleEvent)
-	http.HandleFunc("/", serveTemplate)
-	http.HandleFunc("/api/", handleAPI)
+	// http.HandleFunc("/event", handleEvent)
+	// http.HandleFunc("/", serveTemplate)
+	http.HandleFunc("/api/", middleware(handleAPI))
 
 	log.Println("Starting server on port 3333")
 
