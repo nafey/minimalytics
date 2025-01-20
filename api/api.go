@@ -61,7 +61,10 @@ func HandleAPI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var statRequest StatRequest
-	var response Response
+	status := "OK"
+	message := "Request received"
+
+	var data any = nil
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -72,7 +75,7 @@ func HandleAPI(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if string(body) == "" {
-
+		var response Response
 		response = Response{
 			Status:  "OK",
 			Message: "Request received",
@@ -94,39 +97,26 @@ func HandleAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.Path == "/api/stat/daily/" {
-
-		stats := model.GetDailyStat(statRequest.Event)
-
-		response = Response{
-			Status:  "OK",
-			Message: "Daily stat",
-			Data:    stats,
-		}
+		message = "Daily stat"
+		data = model.GetDailyStat(statRequest.Event)
 
 	} else if r.URL.Path == "/api/stat/hourly/" {
-		stats := model.GetHourlyStat(statRequest.Event)
-
-		response = Response{
-			Status:  "OK",
-			Message: "Hourly stat",
-			Data:    stats,
-		}
+		message = "Hourly stat"
+		data = model.GetHourlyStat(statRequest.Event)
 
 	} else if r.URL.Path == "/api/stat/minutes/" {
-		stats := model.GetMinuteStat(statRequest.Event)
-
-		response = Response{
-			Status:  "OK",
-			Message: "Minute stat",
-			Data:    stats,
-		}
+		message = "Minute stat"
+		data = model.GetMinuteStat(statRequest.Event)
 
 	} else {
-		response = Response{
-			Status:  "OK",
-			Message: "Not implemented",
-			Data:    nil,
-		}
+		message = "Not implemented"
+
+	}
+
+	var response Response = Response{
+		Status: status,
+		Message: message,
+		Data: data,
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
