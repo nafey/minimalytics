@@ -49,9 +49,9 @@ func HandleEvent(w http.ResponseWriter, r *http.Request) {
 
 	event := t.Event
 
-	model.GetMinuteEvent(event)
-	model.GetHourlyEvent(event)
-	model.GetDailyEvent(event)
+	model.SubmitMinuteEvent(event)
+	model.SubmitHourlyEvent(event)
+	model.SubmitDailyEvent(event)
 
 	io.WriteString(w, "OK")
 }
@@ -105,6 +105,10 @@ func HandleAPI(w http.ResponseWriter, r *http.Request) {
 		data = model.GetHourlyStat(statRequest.Event)
 
 	} else if r.URL.Path == "/api/stat/minutes/" {
+		message = "Minute stat"
+		data = model.GetMinuteStat(statRequest.Event)
+
+	} else if r.URL.Path == "/api/dashboard/default/" {
 		message = "Minute stat"
 		data = model.GetMinuteStat(statRequest.Event)
 

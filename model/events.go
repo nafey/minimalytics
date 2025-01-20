@@ -45,7 +45,7 @@ type MinuteStat struct {
 	Count  int64  `json:"count"`
 }
 
-func GetDailyEvent(event string) {
+func SubmitDailyEvent(event string) {
 	currentTime := time.Now()
 	date := currentTime.Format("2006-01-02")
 
@@ -64,7 +64,7 @@ func GetDailyEvent(event string) {
 	}
 }
 
-func GetHourlyEvent(event string) {
+func SubmitHourlyEvent(event string) {
 	currentTime := time.Now()
 
 	hour := currentTime.Format("2006-01-02 15:00:00")
@@ -84,7 +84,7 @@ func GetHourlyEvent(event string) {
 	}
 }
 
-func GetMinuteEvent(event string) {
+func SubmitMinuteEvent(event string) {
 	currentTime := time.Now()
 	minute := currentTime.Format("2006-01-02 15:04:00")
 
@@ -105,7 +105,7 @@ func GetMinuteEvent(event string) {
 	}
 }
 
-func GetMinuteStat(event string) [60]MinuteStat {
+func GetMinuteStat(event string) * [60]MinuteStat {
 
 	currentTime := time.Now()
 	toMinute := currentTime.Format("2006-01-02 15:04:00")
@@ -146,10 +146,10 @@ func GetMinuteStat(event string) [60]MinuteStat {
 		statsArray[i] = iStatItem
 	}
 
-	return statsArray
+	return &statsArray
 }
 
-func GetHourlyStat(event string) [48]HourStat {
+func GetHourlyStat(event string) *[48]HourStat {
 	currentTime := time.Now()
 	toHour := currentTime.Format("2006-01-02 15:00:00")
 	fromHour := currentTime.AddDate(0, 0, -48).Format("2006-01-02 15:00:00")
@@ -189,10 +189,10 @@ func GetHourlyStat(event string) [48]HourStat {
 		statsArray[i] = iStatItem
 	}
 
-	return statsArray
+	return &statsArray
 }
 
-func GetDailyStat(event string) [30]DateStat {
+func GetDailyStat(event string) *[30]DateStat {
 	currentTime := time.Now()
 	toDate := currentTime.Format("2006-01-02")
 	fromDate := currentTime.AddDate(0, 0, -30).Format("2006-01-02")
@@ -231,7 +231,7 @@ func GetDailyStat(event string) [30]DateStat {
 		statsArray[i] = iStatItem
 	}
 
-	return statsArray
+	return &statsArray
 }
 
 func Init() {
