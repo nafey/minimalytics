@@ -9,7 +9,7 @@ import (
 	"minimalytics/model"
 	"net/http"
 	"strings"
-
+	"strconv"
 	// "github.com/sirupsen/logrus/hooks/writer"
 )
 
@@ -27,6 +27,11 @@ type StatRequest struct {
 	Event string `json:"event"`
 }
 
+func isNumber(s string) bool {
+	_, err := strconv.Atoi(s) // Converts string to integer
+	return err == nil
+}
+
 func writeResponse(w http.ResponseWriter, err error, message string, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	var response Response
@@ -34,6 +39,7 @@ func writeResponse(w http.ResponseWriter, err error, message string, data any) {
 
 	if err != nil {
 		status = "ERROR"
+		w.WriteHeader(http.StatusBadRequest)
 		log.Println(message)
 		log.Println(err)
 	}
@@ -64,12 +70,42 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func HandleGraphs(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func HandleDashboard(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+
+	trimmedPath := strings.Trim(path, "/")
+	parts := strings.Split(trimmedPath, "/")
+
+	if (len(parts) == 2) {
+		writeResponse(w, nil, "Dashboards Details", model.GetDashboards())
+
+	} else if (len(parts) > 2) {
+		dashboardId, err := strconv.Atoi(parts[2])
+		if err != nil {
+			writeResponse(w, err, "Invalid dashboardId in the request", nil)
+			return
+		}
+
+
+		if (len(parts) == 3){
+			writeResponse(w, nil, "Dashboard details", model.GetDashboard(int64(dashboardId)))
+
+		} else if (len(parts) == 4) {
+			writeResponse(w, nil, "Graph details", model.GetDashboardGraphs(int64(dashboardId)))
+		} else {
+			writeResponse(w, errors.New("Invalid request"), "Invalid request", nil)
+		}
+	}
+
+
+}
+
 func HandleConfig(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
-
-	log.Println(parts)
-	log.Println(len(parts))
-
 	if len(parts) < 4 {
 		writeResponse(w, nil, "Request received", nil)
 		return 

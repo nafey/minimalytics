@@ -72,7 +72,8 @@ func main() {
 	http.HandleFunc("/event", api.Middleware(api.HandleEvent))
 	// http.HandleFunc("/", serveTemplate)
 
-	http.HandleFunc("/api/config/", api.Middleware(api.HandleConfig))
+	http.HandleFunc("/api/dashboards/", api.Middleware(api.HandleDashboard))
+	http.HandleFunc("/api/config/", api.Middleware(api.HandleStat))
 	http.HandleFunc("/api/stat/", api.Middleware(api.HandleStat))
 
 	log.Println("Starting server on port 3333")
