@@ -2,11 +2,15 @@ package api
 
 import (
 	"bytes"
-	"log"
-	"io"
-	"net/http"
 	"encoding/json"
+	"errors"
+	"io"
+	"log"
 	"minimalytics/model"
+	"net/http"
+	"strings"
+
+	// "github.com/sirupsen/logrus/hooks/writer"
 )
 
 type Message struct {
@@ -16,11 +20,33 @@ type Message struct {
 type Response struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
-	Data    any    `json:"data"`
+	Data    any    `json:"data,omitempty"`
 }
 
 type StatRequest struct {
 	Event string `json:"event"`
+}
+
+func writeResponse(w http.ResponseWriter, err error, message string, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	var response Response
+	var status string = "OK"
+
+	if err != nil {
+		status = "ERROR"
+		log.Println(message)
+		log.Println(err)
+	}
+
+	response = Response{
+		Status:  status,
+		Message: message,
+		Data:    data,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+	}
 }
 
 func Middleware(next http.HandlerFunc) http.HandlerFunc {
@@ -36,6 +62,24 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 
 		next(w, r)
 	}
+}
+
+func HandleConfig(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+
+	log.Println(parts)
+	log.Println(len(parts))
+
+	if len(parts) < 4 {
+		writeResponse(w, nil, "Request received", nil)
+		return 
+	}
+
+	key := parts[3]
+	config := model.GetConfig(key)
+
+	value := config.Value
+	writeResponse(w, nil, "Value", value)
 }
 
 func HandleEvent(w http.ResponseWriter, r *http.Request) {
@@ -56,74 +100,41 @@ func HandleEvent(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "OK")
 }
 
-
-func HandleAPI(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
+func HandleStat(w http.ResponseWriter, r *http.Request) {
 	var statRequest StatRequest
-	status := "OK"
-	message := "Request received"
-
-	var data any = nil
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("Error reading body: %v", err)
-		http.Error(w, "Unable to read body", http.StatusInternalServerError)
+		writeResponse(w, err, "Unable to read body", nil)
+
 		return
 	}
 	defer r.Body.Close()
 
-	if string(body) == "" {
-		var response Response
-		response = Response{
-			Status:  "OK",
-			Message: "Request received",
-			Data:    nil,
-		}
-
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
-		}
-
+	if len(string(body)) <= 2 {
+		writeResponse(w, errors.New("Inavlid body size"), "No event provided in request", nil)
 		return
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	err = decoder.Decode(&statRequest)
 	if err != nil {
-		log.Print(err)
-		http.Error(w, "Error decoding request", http.StatusBadRequest)
+		writeResponse(w, err, "Invalid Request Body", nil)
 	}
 
 	if r.URL.Path == "/api/stat/daily/" {
-		message = "Daily stat"
-		data = model.GetDailyStat(statRequest.Event)
+		writeResponse(w, nil, "Daily Stat", model.GetDailyStat(statRequest.Event))
 
 	} else if r.URL.Path == "/api/stat/hourly/" {
-		message = "Hourly stat"
-		data = model.GetHourlyStat(statRequest.Event)
+		writeResponse(w, nil, "Hourly Stat", model.GetHourlyStat(statRequest.Event))
 
 	} else if r.URL.Path == "/api/stat/minutes/" {
-		message = "Minute stat"
-		data = model.GetMinuteStat(statRequest.Event)
-
-	} else if r.URL.Path == "/api/dashboard/default/" {
-		message = "Minute stat"
-		data = model.GetMinuteStat(statRequest.Event)
+		writeResponse(w, nil, "Minute Stat", model.GetMinuteStat(statRequest.Event))
 
 	} else {
-		message = "Not implemented"
+		writeResponse(w, nil, "Not implemented", nil)
 
 	}
 
-	var response Response = Response{
-		Status: status,
-		Message: message,
-		Data: data,
-	}
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
-	}
 }

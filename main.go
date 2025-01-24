@@ -69,10 +69,11 @@ func main() {
 
 	// fs := http.FileServer(http.Dir("./static"))
 	// http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.HandleFunc("/event", api.HandleEvent)
+	http.HandleFunc("/event", api.Middleware(api.HandleEvent))
 	// http.HandleFunc("/", serveTemplate)
 
-	http.HandleFunc("/api/", api.Middleware(api.HandleAPI))
+	http.HandleFunc("/api/config/", api.Middleware(api.HandleConfig))
+	http.HandleFunc("/api/stat/", api.Middleware(api.HandleStat))
 
 	log.Println("Starting server on port 3333")
 
