@@ -15,12 +15,12 @@ func InitDashboards() {
 			name TEXT,
 			createdOn TEXT
 		);`
+
 	_, err := db.Exec(query)
 	if err != nil {
 		log.Println("failed to create table: %w", err)
 		return
 	}
-	return
 
 }
 

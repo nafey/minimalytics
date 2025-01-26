@@ -91,6 +91,9 @@ func setup() {
 		os.MkdirAll(path, 0755)
 	}
 
+	// model.InitDailyEvent("DUMMY_EVENT")
+	model.Init()
+
 	// _, err = os.Stat(path)
 	// if err != nil {
 	// 	if os.IsNotExist(err) {
@@ -108,13 +111,14 @@ func setup() {
 
 func main() {
 	setup()
-	model.Init()
+	// model.Init()
 	// model.Hello()
 	// db, _ = sql.Open("sqlite3", "./events.db")
 	//
 	// fs := http.FileServer(http.Dir("./static"))
 	// http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.HandleFunc("/event", api.Middleware(api.HandleEvent))
+	http.HandleFunc("/eventnew/", api.Middleware(api.HandleEventNew))
 	// http.HandleFunc("/", serveTemplate)
 
 	http.HandleFunc("/api/dashboards/", api.Middleware(api.HandleDashboard))

@@ -80,26 +80,25 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	trimmedPath := strings.Trim(path, "/")
 	parts := strings.Split(trimmedPath, "/")
 
-	if (len(parts) == 2) {
+	if len(parts) == 2 {
 		writeResponse(w, nil, "Dashboards Details", model.GetDashboards())
 
-	} else if (len(parts) > 2) {
+	} else if len(parts) > 2 {
 		dashboardId, err := strconv.Atoi(parts[2])
 		if err != nil {
 			writeResponse(w, err, "Invalid dashboardId in the request", nil)
 			return
 		}
 
-		if (len(parts) == 3){
+		if len(parts) == 3 {
 			writeResponse(w, nil, "Dashboard details", model.GetDashboard(int64(dashboardId)))
 
-		} else if (len(parts) == 4) {
+		} else if len(parts) == 4 {
 			writeResponse(w, nil, "Graph details", model.GetDashboardGraphs(int64(dashboardId)))
 		} else {
 			writeResponse(w, errors.New("Invalid request"), "Invalid request", nil)
 		}
 	}
-
 
 }
 
@@ -131,6 +130,22 @@ func HandleEvent(w http.ResponseWriter, r *http.Request) {
 	model.SubmitMinuteEvent(event)
 	model.SubmitHourlyEvent(event)
 	model.SubmitDailyEvent(event)
+
+	io.WriteString(w, "OK")
+}
+
+func HandleEventNew(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	var t Message
+	err := decoder.Decode(&t)
+	if err != nil {
+		panic(err)
+	}
+
+	event := t.Event
+	model.InitEvent(event)
+	model.SubmitDailyEventNew(event)
 
 	io.WriteString(w, "OK")
 }

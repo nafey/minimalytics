@@ -2,6 +2,7 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
 )
@@ -30,6 +31,11 @@ type MinuteEvent struct {
 	Count  int64
 }
 
+type EventRow struct {
+	Time  int64
+	Count int64
+}
+
 type DateStat struct {
 	Date  string `json:"date"`
 	Count int64  `json:"count"`
@@ -43,6 +49,104 @@ type HourStat struct {
 type MinuteStat struct {
 	Minute string `json:"minute"`
 	Count  int64  `json:"count"`
+}
+
+type Event struct {
+	Id       string
+	Event    string
+	LastSeen string
+}
+
+func InitEvents() {
+	query := `
+		CREATE TABLE IF NOT EXISTS events (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			event TEXT,
+			lastSeen TEXT
+		);`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Println("failed to create table: %w", err)
+	}
+}
+
+func InitDailyEvent(event string) {
+	query := fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS daily_%s (
+			time INTEGER PRIMARY KEY,
+			count INTEGER
+		);`, event)
+
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Println("failed to create table: %w", err)
+	}
+}
+
+func InitHourlyEvent(event string) {
+	query := fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS hourly_%s (
+			time INTEGER PRIMARY KEY,
+			count INTEGER
+		);`, event)
+
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Println("failed to create table: %w", err)
+	}
+}
+
+func InitMinutelyEvent(event string) {
+	query := fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS minutely_%s (
+			time INTEGER PRIMARY KEY,
+			count INTEGER
+		);`, event)
+
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Println("failed to create table: %w", err)
+	}
+}
+
+func InitEvent(event string) {
+	row := db.QueryRow("select * from event where event = ?", event)
+
+	var eventDef Event
+	err := row.Scan(&eventDef.Id, &eventDef.Event, &eventDef.LastSeen)
+	if err != nil {
+		// New Event
+		db.Exec("insert into events (event) values (?)", event)
+		InitDailyEvent(event)
+		InitHourlyEvent(event)
+		InitMinutelyEvent(event)
+	} else {
+		// Skip
+
+	}
+
+}
+
+func SubmitDailyEventNew(event string) {
+	currentTime := time.Now()
+	dayStart := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location())
+	time := dayStart.Unix()
+
+	query := fmt.Sprintf("select * from daily_%s where time = ?", event)
+
+	row := db.QueryRow(query, time)
+	var eventRow EventRow
+	err := row.Scan(&eventRow.Time, &eventRow.Count)
+	if err != nil {
+		query = fmt.Sprintf("insert into daily_%s (time, count) values (?, ?)", event)
+		db.Exec(query, time, 1)
+
+	} else {
+		nextCount := eventRow.Count + 1
+		query = fmt.Sprintf("update daily_%s set count = ? where time = ?", event)
+		db.Exec(query, nextCount, time)
+	}
 }
 
 func SubmitDailyEvent(event string) {

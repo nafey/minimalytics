@@ -60,5 +60,10 @@ func Init() {
 		InitGraphs()
 	}
 
+	tab, _ = tableExists("events")
+	if !tab {
+		InitEvents()
+	}
+
 	didInit = true
 }
