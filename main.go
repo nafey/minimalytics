@@ -3,14 +3,17 @@ package main
 import (
 	"errors"
 	"fmt"
+
 	_ "github.com/mattn/go-sqlite3"
+
 	// "html/template"
 	"log"
 	"net/http"
 	"os"
+
 	// "path/filepath"
-	"minimalytics/model"
 	"minimalytics/api"
+	"minimalytics/model"
 )
 
 

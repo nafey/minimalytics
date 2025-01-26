@@ -8,8 +8,8 @@ import (
 	"log"
 	"minimalytics/model"
 	"net/http"
-	"strings"
 	"strconv"
+	"strings"
 	// "github.com/sirupsen/logrus/hooks/writer"
 )
 
@@ -90,7 +90,6 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-
 		if (len(parts) == 3){
 			writeResponse(w, nil, "Dashboard details", model.GetDashboard(int64(dashboardId)))
 
@@ -108,7 +107,7 @@ func HandleConfig(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 4 {
 		writeResponse(w, nil, "Request received", nil)
-		return 
+		return
 	}
 
 	key := parts[3]
