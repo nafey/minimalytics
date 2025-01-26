@@ -1,12 +1,12 @@
 package model
 
 import (
-	"fmt"
-	"time"
 	"database/sql"
 	"log"
+	"time"
 )
 
+var didInit bool = false
 var db *sql.DB
 
 type DateEvent struct {
@@ -57,10 +57,10 @@ func SubmitDailyEvent(event string) {
 		db.Exec("insert into days (date, event, count) values (?, ?, ?)", date, event, 1)
 
 	} else {
-
 		rowId := eventRow.Id
 		nextCount := eventRow.Count + 1
 		db.Exec("update days set count = ? where id = ?", nextCount, rowId)
+
 	}
 }
 
@@ -105,7 +105,7 @@ func SubmitMinuteEvent(event string) {
 	}
 }
 
-func GetMinuteStat(event string) * [60]MinuteStat {
+func GetMinuteStat(event string) *[60]MinuteStat {
 
 	currentTime := time.Now()
 	toMinute := currentTime.Format("2006-01-02 15:04:00")
@@ -232,14 +232,4 @@ func GetDailyStat(event string) *[30]DateStat {
 	}
 
 	return &statsArray
-}
-
-func Init() {
-	var err error
-	db, err = sql.Open("sqlite3", "./events.db")
-
-	if (err != nil) {
-		fmt.Println("Error:", err)
-		panic("Unable to connect to database")
-	}
 }

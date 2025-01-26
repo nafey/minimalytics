@@ -3,10 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
 
 	// "html/template"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -15,7 +17,6 @@ import (
 	"minimalytics/api"
 	"minimalytics/model"
 )
-
 
 type Message struct {
 	Event string
@@ -55,21 +56,62 @@ type StatRequest struct {
 // 		return
 // 	}
 
-// 	err = tmpl.ExecuteTemplate(w, "layout", nil)
-// 	if err != nil {
-// 		log.Print(err.Error())
-// 		http.Error(w, http.StatusText(500), 500)
-// 	}
-// }
+//		err = tmpl.ExecuteTemplate(w, "layout", nil)
+//		if err != nil {
+//			log.Print(err.Error())
+//			http.Error(w, http.StatusText(500), 500)
+//		}
+//	}
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
+}
 
+func setup() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	path := filepath.Join(homeDir, ".minimalytics")
+	isDir, err := exists(path)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
+	if !isDir {
+		os.MkdirAll(path, 0755)
+	}
+
+	// _, err = os.Stat(path)
+	// if err != nil {
+	// 	if os.IsNotExist(err) {
+	// 		err := os.MkdirAll(path, 0755)
+	// 		if err != nil {
+	// 			fmt.Printf("Error: %v\n", err)
+	// 		}
+	// 	} else {
+	// 		fmt.Println("Error:", err)
+	// 	}
+	// 	return
+	// }
+
+}
 
 func main() {
+	setup()
 	model.Init()
-
 	// model.Hello()
-
 	// db, _ = sql.Open("sqlite3", "./events.db")
-
+	//
 	// fs := http.FileServer(http.Dir("./static"))
 	// http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.HandleFunc("/event", api.Middleware(api.HandleEvent))
