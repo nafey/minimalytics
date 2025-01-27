@@ -117,8 +117,8 @@ func main() {
 	//
 	// fs := http.FileServer(http.Dir("./static"))
 	// http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.HandleFunc("/event", api.Middleware(api.HandleEvent))
-	http.HandleFunc("/eventnew/", api.Middleware(api.HandleEventNew))
+	// http.HandleFunc("/event", api.Middleware(api.HandleEvent))
+	http.HandleFunc("/event/", api.Middleware(api.HandleEvent))
 	// http.HandleFunc("/", serveTemplate)
 
 	http.HandleFunc("/api/dashboards/", api.Middleware(api.HandleDashboard))

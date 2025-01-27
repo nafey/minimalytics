@@ -126,28 +126,10 @@ func HandleEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	event := t.Event
-
-	model.SubmitMinuteEvent(event)
-	model.SubmitHourlyEvent(event)
-	model.SubmitDailyEvent(event)
-
-	io.WriteString(w, "OK")
-}
-
-func HandleEventNew(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-
-	var t Message
-	err := decoder.Decode(&t)
-	if err != nil {
-		panic(err)
-	}
-
-	event := t.Event
 	model.InitEvent(event)
-	model.SubmitDailyEventNew(event)
-	model.SubmitHourlyEventNew(event)
-	model.SubmitMinuteEventNew(event)
+	model.SubmitDailyEvent(event)
+	model.SubmitHourlyEvent(event)
+	model.SubmitMinuteEvent(event)
 
 	io.WriteString(w, "OK")
 }
@@ -176,22 +158,13 @@ func HandleStat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.Path == "/api/stat/daily/" {
-		writeResponse(w, nil, "Daily Stat", model.GetDailyStat(statRequest.Event))
-
-	} else if r.URL.Path == "/api/stat/dailynew/" {
-		writeResponse(w, nil, "Daily Stat New", model.GetDailyStatNew(statRequest.Event))
+		writeResponse(w, nil, "Daily Stat New", model.GetDailyStat(statRequest.Event))
 
 	} else if r.URL.Path == "/api/stat/hourly/" {
 		writeResponse(w, nil, "Hourly Stat", model.GetHourlyStat(statRequest.Event))
 
-	} else if r.URL.Path == "/api/stat/hourlynew/" {
-		writeResponse(w, nil, "Hourly Stat", model.GetHourlyStatNew(statRequest.Event))
-
 	} else if r.URL.Path == "/api/stat/minutes/" {
 		writeResponse(w, nil, "Minute Stat", model.GetMinuteStat(statRequest.Event))
-
-	} else if r.URL.Path == "/api/stat/minutesnew/" {
-		writeResponse(w, nil, "Minute Stat", model.GetMinuteStatNew(statRequest.Event))
 
 	} else {
 		writeResponse(w, nil, "Not implemented", nil)
