@@ -146,6 +146,7 @@ func HandleEventNew(w http.ResponseWriter, r *http.Request) {
 	event := t.Event
 	model.InitEvent(event)
 	model.SubmitDailyEventNew(event)
+	model.SubmitHourlyEventNew(event)
 
 	io.WriteString(w, "OK")
 }
@@ -181,6 +182,9 @@ func HandleStat(w http.ResponseWriter, r *http.Request) {
 
 	} else if r.URL.Path == "/api/stat/hourly/" {
 		writeResponse(w, nil, "Hourly Stat", model.GetHourlyStat(statRequest.Event))
+
+	} else if r.URL.Path == "/api/stat/hourlynew/" {
+		writeResponse(w, nil, "Hourly Stat", model.GetHourlyStatNew(statRequest.Event))
 
 	} else if r.URL.Path == "/api/stat/minutes/" {
 		writeResponse(w, nil, "Minute Stat", model.GetMinuteStat(statRequest.Event))
