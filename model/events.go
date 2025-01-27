@@ -134,6 +134,7 @@ func InitEvent(event string) {
 
 func SubmitDailyEventNew(event string) {
 	currentTime := time.Now()
+
 	dayStart := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location())
 	time := dayStart.Unix()
 
@@ -155,7 +156,7 @@ func SubmitDailyEventNew(event string) {
 
 func SubmitHourlyEventNew(event string) {
 	currentTime := time.Now()
-	// iHour := currentTime.Add(time.Duration(-i) * time.Hour).Format("2006-01-02 15:00:00")
+
 	hourStart := currentTime.Truncate(time.Hour)
 	time := hourStart.Unix()
 
@@ -171,6 +172,29 @@ func SubmitHourlyEventNew(event string) {
 	} else {
 		nextCount := eventRow.Count + 1
 		query = fmt.Sprintf("update hourly_%s set count = ? where time = ?", event)
+		db.Exec(query, nextCount, time)
+
+	}
+}
+
+func SubmitMinuteEventNew(event string) {
+	currentTime := time.Now()
+
+	minuteStart := currentTime.Truncate(time.Minute)
+	time := minuteStart.Unix()
+
+	query := fmt.Sprintf("select * from minutely_%s where time = ?", event)
+
+	row := db.QueryRow(query, time)
+	var eventRow EventRow
+	err := row.Scan(&eventRow.Time, &eventRow.Count)
+	if err != nil {
+		query = fmt.Sprintf("insert into minutely_%s (time, count) values (?, ?)", event)
+		db.Exec(query, time, 1)
+
+	} else {
+		nextCount := eventRow.Count + 1
+		query = fmt.Sprintf("update minutely_%s set count = ? where time = ?", event)
 		db.Exec(query, nextCount, time)
 
 	}
@@ -273,6 +297,96 @@ func GetHourlyStatNew(event string) *[48]TimeStat {
 	}
 
 	return &statsArray
+}
+
+func GetMinuteStatNew(event string) *[60]TimeStat {
+	currentTime := time.Now()
+
+	minuteStart := currentTime.Truncate(time.Minute)
+	toTimestamp := minuteStart.Unix()
+
+	fromTime := minuteStart.Add(-60 * time.Minute)
+	fromTimestamp := fromTime.Unix()
+
+	query := fmt.Sprintf("select * from minutely_%s where time between ? and ?", event)
+
+	rows, err := db.Query(query, fromTimestamp, toTimestamp)
+	if err != nil {
+		panic(err)
+	}
+
+	countMap := make(map[int64]int64)
+	for rows.Next() {
+		var eventRow EventRow
+		err = rows.Scan(&eventRow.Time, &eventRow.Count)
+		if err != nil {
+			panic(err)
+		}
+
+		countMap[eventRow.Time] = eventRow.Count
+	}
+
+	var statsArray [60]TimeStat
+	for i := 0; i < 60; i++ {
+		iTime := minuteStart.Add(time.Duration(-i) * time.Minute)
+		iTimestamp := iTime.Unix()
+		iCount := int64(0)
+
+		foundCount, ok := countMap[iTimestamp]
+		if ok {
+			iCount = foundCount
+		}
+
+		iStatItem := TimeStat{
+			Time:  iTimestamp,
+			Count: iCount,
+		}
+
+		statsArray[i] = iStatItem
+	}
+
+	return &statsArray
+
+	// currentTime := time.Now()
+	// toMinute := currentTime.Format("2006-01-02 15:04:00")
+	// fromMinute := currentTime.AddDate(0, 0, -60).Format("2006-01-02 15:04:00")
+
+	// rows, err := db.Query("select * from minutes where minute between ? and ? and event = ?", fromMinute, toMinute, event)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// countMap := make(map[string]int64)
+	// for rows.Next() {
+	// 	var eventRow MinuteEvent
+	// 	err = rows.Scan(&eventRow.Id, &eventRow.Minute, &eventRow.Event, &eventRow.Count)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+
+	// 	countMap[eventRow.Minute] = eventRow.Count
+	// }
+
+	// var statsArray [60]MinuteStat
+	// for i := 0; i < 60; i++ {
+	// 	// iMinute := currentTime.AddDate(0, 0, -1 * i).Format("2006-01-02")
+	// 	iMinute := currentTime.Add(time.Duration(-i) * time.Minute).Format("2006-01-02 15:04:00")
+	// 	iCount := int64(0)
+
+	// 	realCount, ok := countMap[iMinute]
+	// 	if ok {
+	// 		iCount = realCount
+	// 	}
+
+	// 	iStatItem := MinuteStat{
+	// 		Minute: iMinute,
+	// 		Count:  iCount,
+	// 	}
+
+	// 	statsArray[i] = iStatItem
+	// }
+
+	// return &statsArray
 }
 
 func SubmitDailyEvent(event string) {
