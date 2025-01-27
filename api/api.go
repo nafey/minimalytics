@@ -176,6 +176,9 @@ func HandleStat(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/api/stat/daily/" {
 		writeResponse(w, nil, "Daily Stat", model.GetDailyStat(statRequest.Event))
 
+	} else if r.URL.Path == "/api/stat/dailynew/" {
+		writeResponse(w, nil, "Daily Stat New", model.GetDailyStatNew(statRequest.Event))
+
 	} else if r.URL.Path == "/api/stat/hourly/" {
 		writeResponse(w, nil, "Hourly Stat", model.GetHourlyStat(statRequest.Event))
 

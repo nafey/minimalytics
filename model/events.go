@@ -41,6 +41,11 @@ type DateStat struct {
 	Count int64  `json:"count"`
 }
 
+type TimeStat struct {
+	Time  int64 `json:"time"`
+	Count int64 `json:"count"`
+}
+
 type HourStat struct {
 	Hour  string `json:"hour"`
 	Count int64  `json:"count"`
@@ -125,7 +130,6 @@ func InitEvent(event string) {
 		// Skip
 
 	}
-
 }
 
 func SubmitDailyEventNew(event string) {
@@ -147,6 +151,57 @@ func SubmitDailyEventNew(event string) {
 		query = fmt.Sprintf("update daily_%s set count = ? where time = ?", event)
 		db.Exec(query, nextCount, time)
 	}
+}
+
+func GetDailyStatNew(event string) *[60]TimeStat {
+	currentTime := time.Now()
+	toTimestamp := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location()).Unix()
+	// toDay := currentTime.Format("2006-01-02 15:04:00")
+
+	fromTime := currentTime.AddDate(0, 0, -60)
+	fromTimestamp := time.Date(fromTime.Year(), fromTime.Month(), fromTime.Day(), 0, 0, 0, 0, fromTime.Location()).Unix()
+
+	query := fmt.Sprintf("select * from daily_%s where time between ? and ?", event)
+
+	rows, err := db.Query(query, fromTimestamp, toTimestamp)
+	if err != nil {
+		panic(err)
+	}
+
+	countMap := make(map[int64]int64)
+	for rows.Next() {
+		var eventRow EventRow
+		err = rows.Scan(&eventRow.Time, &eventRow.Count)
+		if err != nil {
+			panic(err)
+		}
+
+		countMap[eventRow.Time] = eventRow.Count
+	}
+
+	var statsArray [60]TimeStat
+	for i := 0; i < 60; i++ {
+		// iMinute := currentTime.AddDate(0, 0, -1 * i).Format("2006-01-02")
+		// iMinute := currentTime.Add(time.Duration(-i) * time.Minute).Format("2006-01-02 15:04:00")
+		iTime := currentTime.AddDate(0, 0, -1*i)
+		iTimestamp := time.Date(iTime.Year(), iTime.Month(), iTime.Day(), 0, 0, 0, 0, iTime.Location()).Unix()
+
+		iCount := int64(0)
+
+		foundCount, ok := countMap[iTimestamp]
+		if ok {
+			iCount = foundCount
+		}
+
+		iStatItem := TimeStat{
+			Time:  iTimestamp,
+			Count: iCount,
+		}
+
+		statsArray[i] = iStatItem
+	}
+
+	return &statsArray
 }
 
 func SubmitDailyEvent(event string) {
