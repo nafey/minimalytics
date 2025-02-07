@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	// "github.com/sirupsen/logrus/hooks/writer"
 )
 
 type Message struct {
@@ -28,7 +27,7 @@ type StatRequest struct {
 }
 
 func isNumber(s string) bool {
-	_, err := strconv.Atoi(s) // Converts string to integer
+	_, err := strconv.Atoi(s)
 	return err == nil
 }
 
@@ -171,4 +170,8 @@ func HandleStat(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+}
+
+func HandleTest(w http.ResponseWriter, r *http.Request) {
+	model.DeleteEvents()
 }

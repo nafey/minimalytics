@@ -23,7 +23,7 @@ type TimeStat struct {
 type EventDef struct {
 	Id       string
 	Event    string
-	LastSeen string
+	LastSeen *string
 }
 
 func InitEvents() {
@@ -80,12 +80,13 @@ func InitMinutelyEvent(event string) {
 }
 
 func InitEvent(event string) {
-	row := db.QueryRow("select * from event where event = ?", event)
+	row := db.QueryRow("select * from events where event = ?", event)
 
 	var eventDef EventDef
 	err := row.Scan(&eventDef.Id, &eventDef.Event, &eventDef.LastSeen)
 	if err != nil {
-		// New Event
+		log.Print(err)
+
 		db.Exec("insert into events (event) values (?)", event)
 		InitDailyEvent(event)
 		InitHourlyEvent(event)
@@ -94,6 +95,44 @@ func InitEvent(event string) {
 		// Skip
 
 	}
+}
+
+func DeleteEvents() {
+	rows, err := db.Query("select * from events")
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+
+	var events []string
+	for rows.Next() {
+		var eventDef EventDef
+		err = rows.Scan(&eventDef.Id, &eventDef.Event, &eventDef.LastSeen)
+		if err != nil {
+			panic(err)
+		}
+
+		events = append(events, eventDef.Event)
+	}
+
+	for _, event := range events {
+		// fmt.Printf("%d: %s\n", i+1, event)
+		cutoffTime := time.Now().Unix() - 3600
+		query := fmt.Sprintf("delete from minutely_%s where time < ?", event)
+		_, err := db.Exec(query, cutoffTime)
+		if err != nil {
+			panic(err)
+		}
+
+		cutoffTimeH := time.Now().Unix() - 3600*48
+		query = fmt.Sprintf("delete from hourly_%s where time < ?", event)
+		_, err = db.Exec(query, cutoffTimeH)
+		if err != nil {
+			panic(err)
+		}
+
+	}
+
 }
 
 func SubmitDailyEvent(event string) {

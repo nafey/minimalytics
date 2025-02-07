@@ -3,19 +3,16 @@ package main
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
-
-	_ "github.com/mattn/go-sqlite3"
-
-	// "html/template"
 	"io/fs"
 	"log"
-	"net/http"
-	"os"
-
-	// "path/filepath"
 	"minimalytics/api"
 	"minimalytics/model"
+	"net/http"
+	"os"
+	"path/filepath"
+	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Message struct {
@@ -93,6 +90,7 @@ func setup() {
 
 	// model.InitDailyEvent("DUMMY_EVENT")
 	model.Init()
+	model.DeleteEvents()
 
 	// _, err = os.Stat(path)
 	// if err != nil {
@@ -111,6 +109,17 @@ func setup() {
 
 func main() {
 	setup()
+
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
+
+	go func() {
+		for range ticker.C {
+			// fmt.Println("Hello")
+			model.DeleteEvents()
+		}
+	}()
+
 	// model.Init()
 	// model.Hello()
 	// db, _ = sql.Open("sqlite3", "./events.db")
@@ -124,6 +133,7 @@ func main() {
 	http.HandleFunc("/api/dashboards/", api.Middleware(api.HandleDashboard))
 	http.HandleFunc("/api/config/", api.Middleware(api.HandleStat))
 	http.HandleFunc("/api/stat/", api.Middleware(api.HandleStat))
+	http.HandleFunc("/api/test/", api.Middleware(api.HandleTest))
 
 	log.Println("Starting server on port 3333")
 
