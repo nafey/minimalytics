@@ -70,6 +70,23 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func HandleGraphs(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+
+	trimmedPath := strings.Trim(path, "/")
+	parts := strings.Split(trimmedPath, "/")
+
+	if len(parts) == 2 {
+		writeResponse(w, errors.New("Missing Graph Id"), "Invalid Request: Missing Graph Id", nil)
+
+	} else if len(parts) == 3 {
+		graphId, err := strconv.Atoi(parts[2])
+		if err != nil {
+			writeResponse(w, err, "Invalid graphId in the request", nil)
+			return
+		}
+
+		writeResponse(w, nil, "Dashboard Details", model.GetGraph(int64(graphId)))
+	}
 
 }
 

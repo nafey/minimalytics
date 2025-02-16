@@ -1,11 +1,13 @@
 package model
 
-import "log"
+import (
+	"log"
+)
 
 type Dashboard struct {
-	Id        int64
-	Name      string
-	CreatedOn string
+	Id        int64  `json:"id"`
+	Name      string `json:"name"`
+	CreatedOn string `json:"createdOn"`
 }
 
 func InitDashboards() {
@@ -35,6 +37,7 @@ func GetDashboards() []Dashboard {
 	for rows.Next() {
 		var dash Dashboard
 		err := rows.Scan(&dash.Id, &dash.Name, &dash.CreatedOn) // Replace with actual fields
+
 		if err != nil {
 			// Handle scan error
 			panic(err)

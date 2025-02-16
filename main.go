@@ -88,23 +88,8 @@ func setup() {
 		os.MkdirAll(path, 0755)
 	}
 
-	// model.InitDailyEvent("DUMMY_EVENT")
 	model.Init()
 	model.DeleteEvents()
-
-	// _, err = os.Stat(path)
-	// if err != nil {
-	// 	if os.IsNotExist(err) {
-	// 		err := os.MkdirAll(path, 0755)
-	// 		if err != nil {
-	// 			fmt.Printf("Error: %v\n", err)
-	// 		}
-	// 	} else {
-	// 		fmt.Println("Error:", err)
-	// 	}
-	// 	return
-	// }
-
 }
 
 func main() {
@@ -115,22 +100,13 @@ func main() {
 
 	go func() {
 		for range ticker.C {
-			// fmt.Println("Hello")
 			model.DeleteEvents()
 		}
 	}()
 
-	// model.Init()
-	// model.Hello()
-	// db, _ = sql.Open("sqlite3", "./events.db")
-	//
-	// fs := http.FileServer(http.Dir("./static"))
-	// http.Handle("/static/", http.StripPrefix("/static/", fs))
-	// http.HandleFunc("/event", api.Middleware(api.HandleEvent))
 	http.HandleFunc("/event/", api.Middleware(api.HandleEvent))
-	// http.HandleFunc("/", serveTemplate)
-
 	http.HandleFunc("/api/dashboards/", api.Middleware(api.HandleDashboard))
+	http.HandleFunc("/api/graphs/", api.Middleware(api.HandleGraphs))
 	http.HandleFunc("/api/config/", api.Middleware(api.HandleStat))
 	http.HandleFunc("/api/stat/", api.Middleware(api.HandleStat))
 	http.HandleFunc("/api/test/", api.Middleware(api.HandleTest))

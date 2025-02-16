@@ -3,12 +3,12 @@ package model
 import "log"
 
 type Graph struct {
-	Id          int64
-	DashboardId int64
-	Name        string
-	Event       string
-	Period      string
-	CreatedOn   string
+	Id          int64  `json:"id"`
+	DashboardId int64  `json:"dashboardId"`
+	Name        string `json:"name"`
+	Event       string `json:"event"`
+	Period      string `json:"period"`
+	CreatedOn   string `json:"createdOn"`
 }
 
 func InitGraphs() {
@@ -49,4 +49,16 @@ func GetDashboardGraphs(dashboardId int64) []Graph {
 	}
 
 	return graphs
+}
+
+func GetGraph(graphId int64) Graph {
+	row := db.QueryRow("select * from graphs where id = ?", graphId)
+
+	var graph Graph
+	err := row.Scan(&graph.Id, &graph.DashboardId, &graph.Name, &graph.Event, &graph.Period, &graph.CreatedOn)
+	if err != nil {
+		panic("Dashboard not found")
+	}
+
+	return graph
 }
