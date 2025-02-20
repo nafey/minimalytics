@@ -132,6 +132,10 @@ func HandleConfig(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, nil, "Value", value)
 }
 
+func HandleEventDefsApi(w http.ResponseWriter, r *http.Request) {
+	writeResponse(w, nil, "Events Definitions", model.GetEventDefs())
+}
+
 func HandleEvent(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
@@ -148,6 +152,10 @@ func HandleEvent(w http.ResponseWriter, r *http.Request) {
 	model.SubmitMinuteEvent(event)
 
 	io.WriteString(w, "OK")
+}
+
+func HandleEvents(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func HandleStat(w http.ResponseWriter, r *http.Request) {

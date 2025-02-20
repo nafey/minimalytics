@@ -21,9 +21,9 @@ type TimeStat struct {
 }
 
 type EventDef struct {
-	Id       string
-	Event    string
-	LastSeen *string
+	Id       string  `json:"id"`
+	Event    string  `json:"event"`
+	LastSeen *string `json:"lastSeen"`
 }
 
 func InitEvents() {
@@ -95,6 +95,26 @@ func InitEvent(event string) {
 		// Skip
 
 	}
+}
+
+func GetEventDefs() *[]EventDef {
+	rows, err := db.Query("select * from events")
+	if err != nil {
+		panic(err)
+	}
+
+	var eventDefs []EventDef
+	for rows.Next() {
+		var eventDef EventDef
+		err := rows.Scan(&eventDef.Id, &eventDef.Event, &eventDef.LastSeen)
+		if err != nil {
+			// Handle scan error
+			panic(err)
+		}
+		eventDefs = append(eventDefs, eventDef)
+	}
+
+	return &eventDefs
 }
 
 func DeleteEvents() {
