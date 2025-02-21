@@ -117,6 +117,21 @@ func GetEventDefs() *[]EventDef {
 	return &eventDefs
 }
 
+func IsValidEvent(event string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS (
+		SELECT 1
+		FROM events
+		WHERE event = ?
+	);`
+
+	err := db.QueryRow(query, event).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 func DeleteEvents() {
 	rows, err := db.Query("select * from events")
 	if err != nil {

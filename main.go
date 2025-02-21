@@ -59,6 +59,7 @@ type StatRequest struct {
 //			http.Error(w, http.StatusText(500), 500)
 //		}
 //	}
+
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -107,7 +108,7 @@ func main() {
 	http.HandleFunc("/event/", api.Middleware(api.HandleEvent))
 	http.HandleFunc("/api/dashboards/", api.Middleware(api.HandleDashboard))
 	http.HandleFunc("/api/graphs/", api.Middleware(api.HandleGraphs))
-	// http.HandleFunc("/api/config/", api.Middleware(api.HandleStat))
+
 	http.HandleFunc("/api/stat/", api.Middleware(api.HandleStat))
 	http.HandleFunc("/api/events/", api.Middleware(api.HandleEventDefsApi))
 	http.HandleFunc("/api/test/", api.Middleware(api.HandleTest))

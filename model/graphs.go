@@ -1,6 +1,10 @@
 package model
 
-import "log"
+import (
+	"errors"
+	"log"
+	// "minimalytics/model"
+)
 
 type Graph struct {
 	Id          int64  `json:"id"`
@@ -9,6 +13,12 @@ type Graph struct {
 	Event       string `json:"event"`
 	Period      string `json:"period"`
 	CreatedOn   string `json:"createdOn"`
+}
+
+type GraphUpdate struct {
+	Name   string `json:"name"`
+	Event  string `json:"event"`
+	Period string `json:"period"`
 }
 
 func InitGraphs() {
@@ -61,4 +71,41 @@ func GetGraph(graphId int64) Graph {
 	}
 
 	return graph
+}
+
+func UpdateGraph(graphId int64, updateGraph GraphUpdate) error {
+	name := updateGraph.Name
+	event := updateGraph.Event
+	period := updateGraph.Period
+
+	if name != "" {
+		// Validation
+	}
+
+	if event != "" {
+		exists, _ := IsValidEvent(event)
+		if !exists {
+			return errors.New("Invalid event value")
+		}
+	}
+
+	if period != "" {
+		if period != "DAILY" && period != "HOURLY" && period != "MINUTELY" {
+			return errors.New("Invalid period value")
+		}
+	}
+
+	_, err := db.Exec(`
+		UPDATE graphs
+			set name = coalesce(NULLIF(?, ''), name),
+				event = coalesce(NULLIF(?, ''), event),
+				period = coalesce(NULLIF(?, ''), period)
+			where id = ?`,
+		name, event, period, graphId)
+
+	if err != nil {
+		log.Print(err)
+	}
+
+	return nil
 }

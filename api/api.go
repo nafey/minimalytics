@@ -85,7 +85,27 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		writeResponse(w, nil, "Dashboard Details", model.GetGraph(int64(graphId)))
+		switch r.Method {
+		case http.MethodGet:
+			writeResponse(w, nil, "Dashboard Details", model.GetGraph(int64(graphId)))
+		case http.MethodPatch:
+			var patchData model.GraphUpdate
+			if err := json.NewDecoder(r.Body).Decode(&patchData); err != nil {
+				http.Error(w, "Invalid request body", http.StatusBadRequest)
+				writeResponse(w, nil, "Graph Updated", nil)
+			}
+
+			err = model.UpdateGraph(int64(graphId), patchData)
+			if err != nil {
+				writeResponse(w, err, err.Error(), nil)
+			}
+
+		// patchItem(w, r, id)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+
+		// writeResponse(w, nil, "Dashboard Details", model.GetGraph(int64(graphId)))
 	}
 
 }
@@ -198,5 +218,4 @@ func HandleStat(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleTest(w http.ResponseWriter, r *http.Request) {
-	model.DeleteEvents()
 }
