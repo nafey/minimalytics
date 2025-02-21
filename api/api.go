@@ -84,7 +84,11 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 
 			}
 
-			model.CreateGraph(postData)
+			err := model.CreateGraph(postData)
+			if err != nil {
+				writeResponse(w, err, err.Error(), nil)
+
+			}
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -111,17 +115,13 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 			err = model.UpdateGraph(int64(graphId), patchData)
 			if err != nil {
 				writeResponse(w, err, err.Error(), nil)
-
 			}
 
-		case http.MethodPost:
-			var postData model.GraphCreate
-			if err := json.NewDecoder(r.Body).Decode(&postData); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-
+		case http.MethodDelete:
+			err = model.DeleteGraph(int64(graphId))
+			if err != nil {
+				writeResponse(w, err, err.Error(), nil)
 			}
-
-			model.CreateGraph(postData)
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

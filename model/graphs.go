@@ -120,6 +120,20 @@ func UpdateGraph(graphId int64, updateGraph GraphUpdate) error {
 	return nil
 }
 
+func DeleteGraph(graphId int64) error {
+	_, err := db.Exec(
+		`
+		DELETE FROM graphs where id = ?
+		`,
+		graphId)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return nil
+}
+
 func CreateGraph(createGraph GraphCreate) error {
 	dashboardId := createGraph.DashboardId
 	name := createGraph.Name
@@ -128,6 +142,12 @@ func CreateGraph(createGraph GraphCreate) error {
 
 	if dashboardId <= 0 {
 		return errors.New("Invalid dashboardId")
+	} else {
+		exists, _ := IsValidDashboard(dashboardId)
+		if !exists {
+			return errors.New("Invalid dashboardId")
+		}
+
 	}
 
 	if name == "" {

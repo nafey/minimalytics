@@ -59,3 +59,18 @@ func GetDashboard(dashboardId int64) Dashboard {
 
 	return dashboard
 }
+
+func IsValidDashboard(dashboardId int64) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS (
+		SELECT 1
+		FROM dashboards
+		WHERE id = ?
+	);`
+
+	err := db.QueryRow(query, dashboardId).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
