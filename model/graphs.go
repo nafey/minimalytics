@@ -114,7 +114,7 @@ func UpdateGraph(graphId int64, updateGraph GraphUpdate) error {
 		name, event, period, graphId)
 
 	if err != nil {
-		panic(err)
+		return (err)
 	}
 
 	return nil
@@ -127,11 +127,7 @@ func DeleteGraph(graphId int64) error {
 		`,
 		graphId)
 
-	if err != nil {
-		panic(err)
-	}
-
-	return nil
+	return err
 }
 
 func CreateGraph(createGraph GraphCreate) error {
@@ -185,9 +181,5 @@ func CreateGraph(createGraph GraphCreate) error {
 		`,
 		dashboardId, name, event, period, formattedTime)
 
-	if err != nil {
-		panic(err)
-	}
-
-	return nil
+	return err
 }

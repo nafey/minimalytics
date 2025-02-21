@@ -138,7 +138,25 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(trimmedPath, "/")
 
 	if len(parts) == 2 {
-		writeResponse(w, nil, "Dashboards Details", model.GetDashboards())
+		switch r.Method {
+		case http.MethodGet:
+			writeResponse(w, nil, "Dashboards Details", model.GetDashboards())
+
+		case http.MethodPost:
+
+			var postData model.DashboardCreate
+			if err := json.NewDecoder(r.Body).Decode(&postData); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+
+			}
+
+			err := model.CreateDashboard(postData)
+			if err != nil {
+				writeResponse(w, err, err.Error(), nil)
+			}
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
 
 	} else if len(parts) > 2 {
 		dashboardId, err := strconv.Atoi(parts[2])
@@ -148,7 +166,29 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(parts) == 3 {
-			writeResponse(w, nil, "Dashboard details", model.GetDashboard(int64(dashboardId)))
+			switch r.Method {
+			case http.MethodGet:
+				writeResponse(w, nil, "Dashboard details", model.GetDashboard(int64(dashboardId)))
+			case http.MethodPatch:
+				var patchData model.DashboardUpdate
+				if err = json.NewDecoder(r.Body).Decode(&patchData); err != nil {
+					http.Error(w, "Invalid request body", http.StatusBadRequest)
+				}
+
+				err = model.UpdateDashboard(int64(dashboardId), patchData)
+				if err != nil {
+					writeResponse(w, err, err.Error(), nil)
+				}
+
+			case http.MethodDelete:
+				err = model.DeleteDashboard(int64(dashboardId))
+				if err != nil {
+					writeResponse(w, err, err.Error(), nil)
+				}
+
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
 
 		} else if len(parts) == 4 {
 			writeResponse(w, nil, "Graph details", model.GetDashboardGraphs(int64(dashboardId)))
