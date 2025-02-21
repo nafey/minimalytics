@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"log"
+	"time"
 	// "minimalytics/model"
 )
 
@@ -19,6 +20,13 @@ type GraphUpdate struct {
 	Name   string `json:"name"`
 	Event  string `json:"event"`
 	Period string `json:"period"`
+}
+
+type GraphCreate struct {
+	DashboardId int64  `json:"dashboardId"`
+	Name        string `json:"name"`
+	Event       string `json:"event"`
+	Period      string `json:"period"`
 }
 
 func InitGraphs() {
@@ -79,7 +87,7 @@ func UpdateGraph(graphId int64, updateGraph GraphUpdate) error {
 	period := updateGraph.Period
 
 	if name != "" {
-		// Validation
+		// Add validation if needed
 	}
 
 	if event != "" {
@@ -87,12 +95,14 @@ func UpdateGraph(graphId int64, updateGraph GraphUpdate) error {
 		if !exists {
 			return errors.New("Invalid event value")
 		}
+
 	}
 
 	if period != "" {
 		if period != "DAILY" && period != "HOURLY" && period != "MINUTELY" {
 			return errors.New("Invalid period value")
 		}
+
 	}
 
 	_, err := db.Exec(`
@@ -104,7 +114,59 @@ func UpdateGraph(graphId int64, updateGraph GraphUpdate) error {
 		name, event, period, graphId)
 
 	if err != nil {
-		log.Print(err)
+		panic(err)
+	}
+
+	return nil
+}
+
+func CreateGraph(createGraph GraphCreate) error {
+	dashboardId := createGraph.DashboardId
+	name := createGraph.Name
+	event := createGraph.Event
+	period := createGraph.Period
+
+	if dashboardId <= 0 {
+		return errors.New("Invalid dashboardId")
+	}
+
+	if name == "" {
+		return errors.New("Invalid name")
+	}
+
+	if event != "" {
+		exists, _ := IsValidEvent(event)
+		if !exists {
+			return errors.New("Invalid event value")
+		}
+
+	} else {
+		return errors.New("Event value cannot be empty")
+
+	}
+
+	if period != "" {
+		if period != "DAILY" && period != "HOURLY" && period != "MINUTELY" {
+			return errors.New("Invalid period value")
+		}
+
+	} else {
+		return errors.New("Period cannot be empty")
+
+	}
+
+	currentTime := time.Now()
+	formattedTime := currentTime.Format("2006-01-02 15:04:05")
+
+	_, err := db.Exec(
+		`
+		INSERT INTO graphs (dashboardId, name, event, period, createdOn)
+		values (?, ?, ?, ?, ?)
+		`,
+		dashboardId, name, event, period, formattedTime)
+
+	if err != nil {
+		panic(err)
 	}
 
 	return nil

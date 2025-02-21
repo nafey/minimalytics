@@ -76,7 +76,20 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(trimmedPath, "/")
 
 	if len(parts) == 2 {
-		writeResponse(w, errors.New("Missing Graph Id"), "Invalid Request: Missing Graph Id", nil)
+		switch r.Method {
+		case http.MethodPost:
+			var postData model.GraphCreate
+			if err := json.NewDecoder(r.Body).Decode(&postData); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+
+			}
+
+			model.CreateGraph(postData)
+
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+
+		}
 
 	} else if len(parts) == 3 {
 		graphId, err := strconv.Atoi(parts[2])
@@ -88,24 +101,32 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			writeResponse(w, nil, "Dashboard Details", model.GetGraph(int64(graphId)))
+
 		case http.MethodPatch:
 			var patchData model.GraphUpdate
 			if err := json.NewDecoder(r.Body).Decode(&patchData); err != nil {
 				http.Error(w, "Invalid request body", http.StatusBadRequest)
-				writeResponse(w, nil, "Graph Updated", nil)
 			}
 
 			err = model.UpdateGraph(int64(graphId), patchData)
 			if err != nil {
 				writeResponse(w, err, err.Error(), nil)
+
 			}
 
-		// patchItem(w, r, id)
+		case http.MethodPost:
+			var postData model.GraphCreate
+			if err := json.NewDecoder(r.Body).Decode(&postData); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+
+			}
+
+			model.CreateGraph(postData)
+
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 
-		// writeResponse(w, nil, "Dashboard Details", model.GetGraph(int64(graphId)))
 	}
 
 }
