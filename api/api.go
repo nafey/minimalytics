@@ -33,21 +33,21 @@ func isNumber(s string) bool {
 
 func writeResponse(w http.ResponseWriter, err error, data any) {
 	w.Header().Set("Content-Type", "application/json")
-	var response Response
-	var status string = "OK"
-	var message string = "Success"
-
-	if err != nil {
-		status = "ERROR"
-		w.WriteHeader(http.StatusBadRequest)
-		message = err.Error()
-		log.Printf("Error: %v", err)
+	response := Response{
+		Status:  "OK",
+		Message: "Success",
+		Data:    data,
 	}
 
-	response = Response{
-		Status:  status,
-		Message: message,
-		Data:    data,
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+
+		response = Response{
+			Status:  "ERROR",
+			Message: err.Error(),
+			Data:    nil,
+		}
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -103,9 +103,6 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			graph, err := model.GetGraph(int64(graphId))
-			if err != nil {
-				writeResponse(w, err, nil)
-			}
 			writeResponse(w, err, graph)
 
 		case http.MethodPatch:
@@ -191,9 +188,6 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
 
-		} else if len(parts) == 4 {
-			model.GetDashboardGraphs(int64(dashboardId))
-			writeResponse(w, nil, nil)
 		} else {
 			writeResponse(w, errors.New("Invalid request"), nil)
 		}

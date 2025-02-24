@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"errors"
 	"log"
 	"time"
@@ -10,6 +11,13 @@ type Dashboard struct {
 	Id        int64  `json:"id"`
 	Name      string `json:"name"`
 	CreatedOn string `json:"createdOn"`
+}
+
+type DashboardGet struct {
+	Id        int64   `json:"id"`
+	Name      string  `json:"name"`
+	CreatedOn string  `json:"createdOn"`
+	Graphs    []Graph `json:"graphs"`
 }
 
 type DashboardUpdate struct {
@@ -36,6 +44,21 @@ func InitDashboards() {
 
 }
 
+func IsValidDashboardId(dashboardId int64) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS (
+		SELECT 1
+		FROM dashboards
+		WHERE id = ?
+	);`
+
+	err := db.QueryRow(query, dashboardId).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 func GetDashboards() []Dashboard {
 	rows, err := db.Query("select * from dashboards")
 	if err != nil {
@@ -58,11 +81,23 @@ func GetDashboards() []Dashboard {
 	return dashboards
 }
 
-func GetDashboard(dashboardId int64) (Dashboard, error) {
+func GetDashboard(dashboardId int64) (DashboardGet, error) {
 	row := db.QueryRow("select * from dashboards where id = ?", dashboardId)
 
-	var dashboard Dashboard
+	var dashboard DashboardGet
 	err := row.Scan(&dashboard.Id, &dashboard.Name, &dashboard.CreatedOn)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return dashboard, errors.New("Invalid dashboardId")
+		}
+	}
+
+	var graphs []Graph
+	graphs, err = GetDashboardGraphs(dashboardId)
+
+	dashboard.Graphs = graphs
+
 	return dashboard, err
 }
 
@@ -91,13 +126,12 @@ func UpdateDashboard(dashboardId int64, updateDashboard DashboardUpdate) error {
 	return nil
 }
 
-func CreateDashboard(createDashboard DashboardCreate) (Dashboard, error) {
+func CreateDashboard(createDashboard DashboardCreate) (DashboardGet, error) {
 	name := createDashboard.Name
-	var dash Dashboard
+	var dash DashboardGet
 
 	if name == "" {
 		return dash, errors.New("Invalid name for Dashboard")
-
 	}
 
 	currentTime := time.Now()

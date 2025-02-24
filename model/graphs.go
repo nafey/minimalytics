@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"errors"
 	"log"
 	"time"
@@ -48,8 +49,29 @@ func InitGraphs() {
 
 }
 
+func IsValidGraphId(graphId int64) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS (
+		SELECT 1
+		FROM graphs
+		WHERE id = ?
+	);`
+
+	err := db.QueryRow(query, graphId).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 func GetDashboardGraphs(dashboardId int64) ([]Graph, error) {
 	var graphs []Graph
+
+	exists, _ := IsValidDashboardId(dashboardId)
+	if !exists {
+		return graphs, errors.New("Invalid DashboardId")
+	}
+
 	rows, err := db.Query("select * from graphs where dashboardId = ?", dashboardId)
 	if err != nil {
 		return graphs, err
@@ -73,10 +95,22 @@ func GetGraph(graphId int64) (Graph, error) {
 
 	var graph Graph
 	err := row.Scan(&graph.Id, &graph.DashboardId, &graph.Name, &graph.Event, &graph.Period, &graph.CreatedOn)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return graph, errors.New("Invalid graphId")
+		}
+	}
+
 	return graph, err
 }
 
 func UpdateGraph(graphId int64, updateGraph GraphUpdate) error {
+	_, err := GetGraph(graphId)
+	if err != nil {
+		return err
+	}
+
 	name := updateGraph.Name
 	event := updateGraph.Event
 	period := updateGraph.Period
@@ -100,7 +134,7 @@ func UpdateGraph(graphId int64, updateGraph GraphUpdate) error {
 
 	}
 
-	_, err := db.Exec(`
+	_, err = db.Exec(`
 		UPDATE graphs
 			set name = coalesce(NULLIF(?, ''), name),
 				event = coalesce(NULLIF(?, ''), event),
@@ -108,15 +142,20 @@ func UpdateGraph(graphId int64, updateGraph GraphUpdate) error {
 			where id = ?`,
 		name, event, period, graphId)
 
-	if err != nil {
-		return (err)
-	}
-
-	return nil
+	return err
 }
 
 func DeleteGraph(graphId int64) error {
-	_, err := db.Exec(
+	exists, err := IsValidGraphId(graphId)
+	if !exists {
+		return errors.New("Invalid graphId")
+	}
+
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(
 		`
 		DELETE FROM graphs where id = ?
 		`,
