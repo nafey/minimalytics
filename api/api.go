@@ -31,16 +31,17 @@ func isNumber(s string) bool {
 	return err == nil
 }
 
-func writeResponse(w http.ResponseWriter, err error, message string, data any) {
+func writeResponse(w http.ResponseWriter, err error, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	var response Response
 	var status string = "OK"
+	var message string = "Success"
 
 	if err != nil {
 		status = "ERROR"
 		w.WriteHeader(http.StatusBadRequest)
-		log.Println(message)
-		log.Println(err)
+		message = err.Error()
+		log.Printf("Error: %v", err)
 	}
 
 	response = Response{
@@ -84,11 +85,8 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 
 			}
 
-			err := model.CreateGraph(postData)
-			if err != nil {
-				writeResponse(w, err, err.Error(), nil)
-
-			}
+			graph, err := model.CreateGraph(postData)
+			writeResponse(w, err, graph)
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -98,13 +96,17 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 	} else if len(parts) == 3 {
 		graphId, err := strconv.Atoi(parts[2])
 		if err != nil {
-			writeResponse(w, err, "Invalid graphId in the request", nil)
+			writeResponse(w, err, nil)
 			return
 		}
 
 		switch r.Method {
 		case http.MethodGet:
-			writeResponse(w, nil, "Dashboard Details", model.GetGraph(int64(graphId)))
+			graph, err := model.GetGraph(int64(graphId))
+			if err != nil {
+				writeResponse(w, err, nil)
+			}
+			writeResponse(w, err, graph)
 
 		case http.MethodPatch:
 			var patchData model.GraphUpdate
@@ -113,15 +115,11 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 			}
 
 			err = model.UpdateGraph(int64(graphId), patchData)
-			if err != nil {
-				writeResponse(w, err, err.Error(), nil)
-			}
+			writeResponse(w, err, nil)
 
 		case http.MethodDelete:
 			err = model.DeleteGraph(int64(graphId))
-			if err != nil {
-				writeResponse(w, err, err.Error(), nil)
-			}
+			writeResponse(w, err, nil)
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -140,19 +138,20 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	if len(parts) == 2 {
 		switch r.Method {
 		case http.MethodGet:
-			writeResponse(w, nil, "Dashboards Details", model.GetDashboards())
+			writeResponse(w, nil, model.GetDashboards())
 
 		case http.MethodPost:
-
 			var postData model.DashboardCreate
 			if err := json.NewDecoder(r.Body).Decode(&postData); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
 			}
 
-			err := model.CreateDashboard(postData)
+			dash, err := model.CreateDashboard(postData)
 			if err != nil {
-				writeResponse(w, err, err.Error(), nil)
+				writeResponse(w, err, nil)
+			} else {
+				writeResponse(w, err, dash)
 			}
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -161,14 +160,20 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	} else if len(parts) > 2 {
 		dashboardId, err := strconv.Atoi(parts[2])
 		if err != nil {
-			writeResponse(w, err, "Invalid dashboardId in the request", nil)
+			writeResponse(w, err, nil)
 			return
 		}
 
 		if len(parts) == 3 {
 			switch r.Method {
 			case http.MethodGet:
-				writeResponse(w, nil, "Dashboard details", model.GetDashboard(int64(dashboardId)))
+				dash, err := model.GetDashboard(int64(dashboardId))
+				if err != nil {
+					writeResponse(w, err, nil)
+				} else {
+					writeResponse(w, err, dash)
+				}
+
 			case http.MethodPatch:
 				var patchData model.DashboardUpdate
 				if err = json.NewDecoder(r.Body).Decode(&patchData); err != nil {
@@ -176,24 +181,21 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 				}
 
 				err = model.UpdateDashboard(int64(dashboardId), patchData)
-				if err != nil {
-					writeResponse(w, err, err.Error(), nil)
-				}
+				writeResponse(w, err, nil)
 
 			case http.MethodDelete:
 				err = model.DeleteDashboard(int64(dashboardId))
-				if err != nil {
-					writeResponse(w, err, err.Error(), nil)
-				}
+				writeResponse(w, err, nil)
 
 			default:
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
 
 		} else if len(parts) == 4 {
-			writeResponse(w, nil, "Graph details", model.GetDashboardGraphs(int64(dashboardId)))
+			model.GetDashboardGraphs(int64(dashboardId))
+			writeResponse(w, nil, nil)
 		} else {
-			writeResponse(w, errors.New("Invalid request"), "Invalid request", nil)
+			writeResponse(w, errors.New("Invalid request"), nil)
 		}
 	}
 
@@ -202,7 +204,7 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 func HandleConfig(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 4 {
-		writeResponse(w, nil, "Request received", nil)
+		writeResponse(w, nil, nil)
 		return
 	}
 
@@ -210,11 +212,11 @@ func HandleConfig(w http.ResponseWriter, r *http.Request) {
 	config := model.GetConfig(key)
 
 	value := config.Value
-	writeResponse(w, nil, "Value", value)
+	writeResponse(w, nil, value)
 }
 
 func HandleEventDefsApi(w http.ResponseWriter, r *http.Request) {
-	writeResponse(w, nil, "Events Definitions", model.GetEventDefs())
+	writeResponse(w, nil, model.GetEventDefs())
 }
 
 func HandleEvent(w http.ResponseWriter, r *http.Request) {
@@ -245,34 +247,35 @@ func HandleStat(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("Error reading body: %v", err)
-		writeResponse(w, err, "Unable to read body", nil)
+		writeResponse(w, err, nil)
 
 		return
 	}
 	defer r.Body.Close()
 
 	if len(string(body)) <= 2 {
-		writeResponse(w, errors.New("Inavlid body size"), "No event provided in request", nil)
+		writeResponse(w, errors.New("Inavlid body size"), nil)
 		return
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	err = decoder.Decode(&statRequest)
 	if err != nil {
-		writeResponse(w, err, "Invalid Request Body", nil)
+		writeResponse(w, err, nil)
+
 	}
 
 	if r.URL.Path == "/api/stat/daily/" {
-		writeResponse(w, nil, "Daily Stat New", model.GetDailyStat(statRequest.Event))
+		writeResponse(w, nil, model.GetDailyStat(statRequest.Event))
 
 	} else if r.URL.Path == "/api/stat/hourly/" {
-		writeResponse(w, nil, "Hourly Stat", model.GetHourlyStat(statRequest.Event))
+		writeResponse(w, nil, model.GetHourlyStat(statRequest.Event))
 
 	} else if r.URL.Path == "/api/stat/minutes/" {
-		writeResponse(w, nil, "Minute Stat", model.GetMinuteStat(statRequest.Event))
+		writeResponse(w, nil, model.GetMinuteStat(statRequest.Event))
 
 	} else {
-		writeResponse(w, nil, "Not implemented", nil)
+		writeResponse(w, errors.New("Unimplemented"), nil)
 
 	}
 

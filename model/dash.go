@@ -58,26 +58,27 @@ func GetDashboards() []Dashboard {
 	return dashboards
 }
 
-func GetDashboard(dashboardId int64) Dashboard {
+func GetDashboard(dashboardId int64) (Dashboard, error) {
 	row := db.QueryRow("select * from dashboards where id = ?", dashboardId)
 
 	var dashboard Dashboard
 	err := row.Scan(&dashboard.Id, &dashboard.Name, &dashboard.CreatedOn)
-	if err != nil {
-		panic("Dashboard not found")
-	}
-
-	return dashboard
+	return dashboard, err
 }
 
 func UpdateDashboard(dashboardId int64, updateDashboard DashboardUpdate) error {
+	_, err := GetDashboard(dashboardId)
+	if err != nil {
+		return err
+	}
+
 	name := updateDashboard.Name
 
 	if name != "" {
 		// Add validation if needed
 	}
 
-	_, err := db.Exec(`
+	_, err = db.Exec(`
 		UPDATE dashboards
 		set name = coalesce(NULLIF(?, ''), name)
 		where id = ?`,
@@ -90,36 +91,55 @@ func UpdateDashboard(dashboardId int64, updateDashboard DashboardUpdate) error {
 	return nil
 }
 
-func CreateDashboard(createDashboard DashboardCreate) error {
+func CreateDashboard(createDashboard DashboardCreate) (Dashboard, error) {
 	name := createDashboard.Name
+	var dash Dashboard
 
 	if name == "" {
-		return errors.New("Invalid name for Dashboard")
+		return dash, errors.New("Invalid name for Dashboard")
 
 	}
 
 	currentTime := time.Now()
 	formattedTime := currentTime.Format("2006-01-02 15:04:05")
 
-	_, err := db.Exec(
+	result, err := db.Exec(
 		`
 		INSERT INTO dashboards (name, createdOn)
 		values (?, ?)
 		`,
 		name, formattedTime)
+	if err != nil {
+		return dash, err
+	}
 
-	return err
+	dashboardId, err := result.LastInsertId()
+	if err != nil {
+		return dash, err
+	}
+
+	dash, err = GetDashboard(dashboardId)
+
+	return dash, err
 }
 
 func DeleteDashboard(dashboardId int64) error {
-	graphs := GetDashboardGraphs(dashboardId)
+	_, err := GetDashboard(dashboardId)
+	if err != nil {
+		return err
+	}
+
+	graphs, err := GetDashboardGraphs(dashboardId)
+	if err != nil {
+		return err
+	}
 
 	for _, graph := range graphs {
 		graphId := graph.Id
 		DeleteGraph(graphId)
 	}
 
-	_, err := db.Exec(
+	_, err = db.Exec(
 		`
 		DELETE FROM dashboards where id = ?
 		`,

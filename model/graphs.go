@@ -48,37 +48,32 @@ func InitGraphs() {
 
 }
 
-func GetDashboardGraphs(dashboardId int64) []Graph {
+func GetDashboardGraphs(dashboardId int64) ([]Graph, error) {
+	var graphs []Graph
 	rows, err := db.Query("select * from graphs where dashboardId = ?", dashboardId)
 	if err != nil {
-		panic(err)
+		return graphs, err
 	}
 	defer rows.Close()
 
-	var graphs []Graph
 	for rows.Next() {
 		var graph Graph
 		err := rows.Scan(&graph.Id, &graph.DashboardId, &graph.Name, &graph.Event, &graph.Period, &graph.CreatedOn) // Replace with actual fields
 		if err != nil {
-			// Handle scan error
-			panic(err)
+			return graphs, err
 		}
 		graphs = append(graphs, graph)
 	}
 
-	return graphs
+	return graphs, err
 }
 
-func GetGraph(graphId int64) Graph {
+func GetGraph(graphId int64) (Graph, error) {
 	row := db.QueryRow("select * from graphs where id = ?", graphId)
 
 	var graph Graph
 	err := row.Scan(&graph.Id, &graph.DashboardId, &graph.Name, &graph.Event, &graph.Period, &graph.CreatedOn)
-	if err != nil {
-		panic("Dashboard not found")
-	}
-
-	return graph
+	return graph, err
 }
 
 func UpdateGraph(graphId int64, updateGraph GraphUpdate) error {
@@ -130,56 +125,68 @@ func DeleteGraph(graphId int64) error {
 	return err
 }
 
-func CreateGraph(createGraph GraphCreate) error {
+func CreateGraph(createGraph GraphCreate) (Graph, error) {
+	var graph Graph
 	dashboardId := createGraph.DashboardId
 	name := createGraph.Name
 	event := createGraph.Event
 	period := createGraph.Period
 
 	if dashboardId <= 0 {
-		return errors.New("Invalid dashboardId")
+		return graph, errors.New("Invalid dashboardId")
 	} else {
 		exists, _ := IsValidDashboard(dashboardId)
 		if !exists {
-			return errors.New("Invalid dashboardId")
+			return graph, errors.New("Invalid dashboardId")
 		}
 
 	}
 
 	if name == "" {
-		return errors.New("Invalid name")
+		return graph, errors.New("Invalid name")
 	}
 
 	if event != "" {
 		exists, _ := IsValidEvent(event)
 		if !exists {
-			return errors.New("Invalid event value")
+			return graph, errors.New("Invalid event value")
 		}
 
 	} else {
-		return errors.New("Event value cannot be empty")
+		return graph, errors.New("Event value cannot be empty")
 
 	}
 
 	if period != "" {
 		if period != "DAILY" && period != "HOURLY" && period != "MINUTELY" {
-			return errors.New("Invalid period value")
+			return graph, errors.New("Invalid period value")
 		}
 
 	} else {
-		return errors.New("Period cannot be empty")
+		return graph, errors.New("Period cannot be empty")
 
 	}
 
 	currentTime := time.Now()
 	formattedTime := currentTime.Format("2006-01-02 15:04:05")
 
-	_, err := db.Exec(
+	result, err := db.Exec(
 		`
 		INSERT INTO graphs (dashboardId, name, event, period, createdOn)
 		values (?, ?, ?, ?, ?)
 		`,
 		dashboardId, name, event, period, formattedTime)
 
-	return err
+	if err != nil {
+		return graph, err
+	}
+
+	graphId, err := result.LastInsertId()
+	if err != nil {
+		return graph, err
+	}
+
+	graph, err = GetGraph(graphId)
+	return graph, err
+
 }
