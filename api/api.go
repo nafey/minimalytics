@@ -6,7 +6,7 @@ import (
 	"errors"
 	"io"
 	"log"
-	"minimalytics/model"
+	"minim/model"
 	"net/http"
 	"strconv"
 	"strings"

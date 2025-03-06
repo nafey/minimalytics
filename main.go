@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
-	"minimalytics/api"
-	"minimalytics/model"
+	"minim/api"
+	"minim/model"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/urfave/cli/v2"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -93,7 +95,8 @@ func setup() {
 	model.DeleteEvents()
 }
 
-func main() {
+func servermain() {
+
 	setup()
 
 	ticker := time.NewTicker(60 * time.Second)
@@ -121,5 +124,78 @@ func main() {
 	} else if err != nil {
 		fmt.Printf("error starting server: %s\n", err)
 		os.Exit(1)
+	}
+}
+
+func main() {
+	app := &cli.App{
+		Commands: []*cli.Command{
+			{
+				Name:  "status",
+				Usage: "Shows the status of Minimalytics",
+				Action: func(cCtx *cli.Context) error {
+					return nil
+				},
+			},
+			{
+				Name:  "login",
+				Usage: "Generate a code to login to the Minimalytics UI/API",
+				Action: func(cCtx *cli.Context) error {
+					return nil
+				},
+			},
+			{
+				Name:  "server",
+				Usage: "Control the Minimalytics server",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "start",
+						Usage: "Start the server daemon",
+						Action: func(cCtx *cli.Context) error {
+							// fmt.Println("new task template: ", cCtx.Args().First())
+							return nil
+						},
+					},
+					{
+						Name:  "stop",
+						Usage: "stop the server daemon",
+						Action: func(cCtx *cli.Context) error {
+							return nil
+						},
+					},
+				},
+			},
+			{
+				Name:  "ui",
+				Usage: "Control the Minimalytics UI",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "enable",
+						Usage: "Enable the Minimalytics UI",
+						Action: func(cCtx *cli.Context) error {
+							return nil
+						},
+					},
+					{
+						Name:  "disable",
+						Usage: "Disable the Minimalytics UI",
+						Action: func(cCtx *cli.Context) error {
+							return nil
+						},
+					},
+				},
+			},
+			{
+				Name:  "version",
+				Usage: "Print the Minimalytics version",
+				Action: func(cCtx *cli.Context) error {
+					return nil
+				},
+			},
+		},
+	}
+
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
 	}
 }

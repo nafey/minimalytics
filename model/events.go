@@ -159,7 +159,7 @@ func DeleteEvents() {
 			panic(err)
 		}
 
-		cutoffTimeH := time.Now().Unix() - 3600*48
+		cutoffTimeH := time.Now().Unix() - 3600*60
 		query = fmt.Sprintf("delete from hourly_%s where time < ?", event)
 		_, err = db.Exec(query, cutoffTimeH)
 		if err != nil {
@@ -288,13 +288,13 @@ func GetDailyStat(event string) *[60]TimeStat {
 	return &statsArray
 }
 
-func GetHourlyStat(event string) *[48]TimeStat {
+func GetHourlyStat(event string) *[60]TimeStat {
 	currentTime := time.Now()
 
 	hourStart := currentTime.Truncate(time.Hour)
 	toTimestamp := hourStart.Unix()
 
-	fromTime := hourStart.Add(-48 * time.Hour)
+	fromTime := hourStart.Add(-60 * time.Hour)
 	fromTimestamp := fromTime.Unix()
 
 	query := fmt.Sprintf("select * from hourly_%s where time between ? and ?", event)
@@ -315,8 +315,8 @@ func GetHourlyStat(event string) *[48]TimeStat {
 		countMap[eventRow.Time] = eventRow.Count
 	}
 
-	var statsArray [48]TimeStat
-	for i := 0; i < 48; i++ {
+	var statsArray [60]TimeStat
+	for i := 0; i < 60; i++ {
 		iTime := hourStart.Add(time.Duration(-i) * time.Hour)
 		iTimestamp := iTime.Unix()
 		iCount := int64(0)
