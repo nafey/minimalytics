@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"minim/api"
@@ -12,6 +14,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/jxskiss/mcli"
@@ -25,7 +29,7 @@ type Message struct {
 type Response struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
-	Data    any    `json:"data"`
+	Data    any    `json:"data,omitempty"`
 }
 
 type StatRequest struct {
@@ -76,6 +80,72 @@ func exists(path string) (bool, error) {
 	return false, err
 }
 
+func readPID() (int, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return -1, err
+	}
+
+	minimDir := filepath.Join(homeDir, ".minim")
+	isDir, err := exists(minimDir)
+	if err != nil || !isDir {
+		return -1, err
+	}
+
+	pidFile := filepath.Join(minimDir, "minim.pid")
+	pidBytes, err := os.ReadFile(pidFile)
+
+	pidStr := strings.TrimSpace(string(pidBytes))
+
+	pid, err := strconv.Atoi(pidStr)
+	return pid, err
+}
+
+func isServerRunning() (bool, error) {
+	pid, err := readPID()
+	if err != nil {
+		return false, err
+	}
+
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false, err
+	}
+
+	err = process.Signal(syscall.Signal(0))
+	if err != nil {
+		return false, err
+	}
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	port := strconv.Itoa(PORT)
+	resp, err := client.Get("http://localhost:" + port + "/api/")
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	var apiResp Response
+	if err := json.Unmarshal(body, &apiResp); err != nil {
+		return false, err
+	}
+
+	if apiResp.Status != "OK" || apiResp.Message != "Success" {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func startServer() error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -85,7 +155,6 @@ func startServer() error {
 
 	minimDir := filepath.Join(homeDir, ".minim")
 	isDir, err := exists(minimDir)
-
 	if err != nil {
 		fmt.Println("Error:", err)
 		return err
@@ -95,15 +164,27 @@ func startServer() error {
 		os.MkdirAll(minimDir, 0755)
 	}
 
-	log.Print(">>>>>>>>>>>>>>>>>> 2")
-
 	pidFile := filepath.Join(minimDir, "minim.pid")
 	logFile := filepath.Join(minimDir, "minim.log")
 
-	log.Print(pidFile)
-	log.Print(logFile)
+	pid := os.Getpid()
+	pidStr := strconv.Itoa(pid)
 
-	log.Print(">>>>>>>>>>>>>>>>>> 6")
+	// Write to file
+	err = os.WriteFile(pidFile, []byte(pidStr), 0644)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return err
+	}
+
+	f, err := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	log.SetOutput(f)
+	log.Println("-------------- Starting Server ---------------")
 
 	model.Init()
 	model.DeleteEvents()
@@ -146,25 +227,39 @@ func startServer() error {
 
 func runCmd1() {
 	exepath := os.Args[0]
-	cmd := exec.Command(exepath, "server")
+	cmd := exec.Command(exepath, "execserver")
 	cmd.Start()
 }
 
 func runCmd2() {
 	log.Print(">>>>>>>> dummy")
+
+	out, err := readPID()
+	log.Print(err)
+	log.Print(out)
+
+	log.Print(">>>>>>>>>>>>> dummy 2")
+
+	isRunning, err := isServerRunning()
+	if isRunning {
+		log.Print(">>>>>>> Is Running")
+	} else {
+		log.Print(">>>>>>> Is Not Running")
+	}
 }
 
 func runCmd3() {
-	startServer()
+	out := startServer()
+	log.Print(out)
 }
 
 func main() {
 
-	mcli.Add("status", runCmd1, "View the status")
+	mcli.Add("status", runCmd2, "View the status")
 
 	mcli.AddGroup("server", "Commands for managing Minimalytics server")
 	mcli.Add("server start", runCmd1, "Start the server")
-	mcli.Add("server stop", runCmd1, "Stop the server")
+	mcli.Add("server stop", runCmd2, "Stop the server")
 
 	// mcli.Add("dummy", runCmd2, "")
 
