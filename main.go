@@ -10,11 +10,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"time"
 
-	"github.com/urfave/cli/v2"
-
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/sevlyar/go-daemon"
+	"github.com/urfave/cli/v2"
 )
 
 type Message struct {
@@ -30,6 +32,8 @@ type Response struct {
 type StatRequest struct {
 	Event string `json:"event"`
 }
+
+const PORT = 3333
 
 // func serveTemplate(w http.ResponseWriter, r *http.Request) {
 // 	lp := filepath.Join("templates", "layout.html")
@@ -73,31 +77,110 @@ func exists(path string) (bool, error) {
 	return false, err
 }
 
-func setup() {
+// func setup() {
+// 	homeDir, err := os.UserHomeDir()
+// 	if err != nil {
+// 		fmt.Println("Error:", err)
+// 		return
+// 	}
+
+// 	path := filepath.Join(homeDir, ".minim")
+// 	isDir, err := exists(path)
+
+// 	if err != nil {
+// 		fmt.Println("Error:", err)
+// 	}
+
+// 	if !isDir {
+// 		os.MkdirAll(path, 0755)
+// 	}
+
+// 	cntxt := &daemon.Context{
+// 		PidFileName: "minim.pid",
+// 		PidFilePerm: 0644,
+// 		LogFileName: "minim.log",
+// 		LogFilePerm: 0640,
+// 		WorkDir:     homeDir,
+// 		Umask:       027,
+// 		Args:        []string{"minim server"},
+// 	}
+
+// 	d, err := cntxt.Reborn()
+// 	if err != nil {
+// 		log.Fatal("Unable to run: ", err)
+// 	}
+// 	if d != nil {
+// 		return
+// 	}
+// 	defer cntxt.Release()
+
+// 	log.Print("- - - - - - - - - - - - - - -")
+// 	log.Print("daemon started")
+
+// 	model.Init()
+// 	model.DeleteEvents()
+// }
+
+func startServer() error {
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Println("Error:", err)
-		return
+		return err
 	}
 
-	path := filepath.Join(homeDir, ".minimalytics")
-	isDir, err := exists(path)
+	minimDir := filepath.Join(homeDir, ".minim")
+	isDir, err := exists(minimDir)
 
 	if err != nil {
 		fmt.Println("Error:", err)
+		return err
 	}
 
 	if !isDir {
-		os.MkdirAll(path, 0755)
+		os.MkdirAll(minimDir, 0755)
 	}
+
+	log.Print(">>>>>>>>>>>>>>>>>> 2")
+
+	pidFile := filepath.Join(minimDir, "minim.pid")
+	logFile := filepath.Join(minimDir, "minim.log")
+
+	log.Print(pidFile)
+	log.Print(logFile)
+
+	cntxt := &daemon.Context{
+		PidFileName: pidFile,
+		PidFilePerm: 0644,
+		LogFileName: logFile,
+		LogFilePerm: 0640,
+		WorkDir:     minimDir,
+		Umask:       027,
+		Args:        []string{"minim server"},
+	}
+
+	log.Print(">>>>>>>>>>>>>>>>>> 3")
+	child, err := cntxt.Reborn()
+	log.Print(">>>>>>>>>>>>>>>>>> 3.5")
+	if err != nil {
+
+		log.Print(">>>>>>>>>>>>>>>>>> 4")
+		log.Fatal("Unable to run: ", err)
+		return err
+	}
+	if child != nil {
+		log.Print(">>>>>>>>>>>>>>>>>> 5")
+		return nil
+	}
+	defer cntxt.Release()
+
+	log.Print("- - - - - - - - - - - - - - -")
+	log.Print("daemon started")
+
+	log.Print(">>>>>>>>>>>>>>>>>> 6")
 
 	model.Init()
 	model.DeleteEvents()
-}
-
-func servermain() {
-
-	setup()
 
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
@@ -109,6 +192,8 @@ func servermain() {
 	}()
 
 	http.HandleFunc("/event/", api.Middleware(api.HandleEvent))
+
+	http.HandleFunc("/api/", api.Middleware(api.HandleAPIBase))
 	http.HandleFunc("/api/dashboards/", api.Middleware(api.HandleDashboard))
 	http.HandleFunc("/api/graphs/", api.Middleware(api.HandleGraphs))
 
@@ -116,18 +201,26 @@ func servermain() {
 	http.HandleFunc("/api/events/", api.Middleware(api.HandleEventDefsApi))
 	http.HandleFunc("/api/test/", api.Middleware(api.HandleTest))
 
-	log.Println("Starting server on port 3333")
+	port := strconv.Itoa(PORT)
+	log.Println("Starting server on port " + port)
 
-	err := http.ListenAndServe(":3333", nil)
+	err = http.ListenAndServe(":"+port, nil)
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Printf("server closed\n")
+		return err
+
 	} else if err != nil {
 		fmt.Printf("error starting server: %s\n", err)
 		os.Exit(1)
+		return err
 	}
+
+	return nil
 }
 
-func main() {
+func climain() {
+	// startServer()
+
 	app := &cli.App{
 		Commands: []*cli.Command{
 			{
@@ -152,8 +245,16 @@ func main() {
 						Name:  "start",
 						Usage: "Start the server daemon",
 						Action: func(cCtx *cli.Context) error {
-							// fmt.Println("new task template: ", cCtx.Args().First())
+							log.Print(">>>>>>>>>>>>>>>>>> 1")
+							log.Print(runtime.Version())
+							err := startServer()
+							if err == nil {
+								print("Err is nil")
+							} else {
+								print(err)
+							}
 							return nil
+
 						},
 					},
 					{
@@ -195,7 +296,19 @@ func main() {
 		},
 	}
 
+	if len(os.Args) < 2 {
+		return
+	}
+
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func main() {
+	startServer()
+
+	// climain()
+	// startServer()
+
 }

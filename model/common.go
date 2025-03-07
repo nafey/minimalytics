@@ -29,7 +29,7 @@ func Init() {
 
 	var err error
 	homeDir, _ := os.UserHomeDir()
-	dbPath := filepath.Join(homeDir, ".minimalytics", "data.db")
+	dbPath := filepath.Join(homeDir, ".minim", "data.db")
 	db, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Println("Error:", err)

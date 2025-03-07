@@ -275,5 +275,9 @@ func HandleStat(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func HandleAPIBase(w http.ResponseWriter, r *http.Request) {
+	writeResponse(w, nil, nil)
+}
+
 func HandleTest(w http.ResponseWriter, r *http.Request) {
 }
