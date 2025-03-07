@@ -9,13 +9,14 @@ import (
 	"minim/model"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"time"
 
+	"github.com/jxskiss/mcli"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
 )
 
@@ -122,7 +123,6 @@ func exists(path string) (bool, error) {
 // }
 
 func startServer() error {
-
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -148,34 +148,6 @@ func startServer() error {
 
 	log.Print(pidFile)
 	log.Print(logFile)
-
-	cntxt := &daemon.Context{
-		PidFileName: pidFile,
-		PidFilePerm: 0644,
-		LogFileName: logFile,
-		LogFilePerm: 0640,
-		WorkDir:     minimDir,
-		Umask:       027,
-		Args:        []string{"minim server"},
-	}
-
-	log.Print(">>>>>>>>>>>>>>>>>> 3")
-	child, err := cntxt.Reborn()
-	log.Print(">>>>>>>>>>>>>>>>>> 3.5")
-	if err != nil {
-
-		log.Print(">>>>>>>>>>>>>>>>>> 4")
-		log.Fatal("Unable to run: ", err)
-		return err
-	}
-	if child != nil {
-		log.Print(">>>>>>>>>>>>>>>>>> 5")
-		return nil
-	}
-	defer cntxt.Release()
-
-	log.Print("- - - - - - - - - - - - - - -")
-	log.Print("daemon started")
 
 	log.Print(">>>>>>>>>>>>>>>>>> 6")
 
@@ -305,10 +277,33 @@ func climain() {
 	}
 }
 
-func main() {
-	startServer()
+func runCmd1() {
+	exepath := os.Args[0]
+	cmd := exec.Command(exepath, "server")
+	cmd.Start()
+}
 
-	// climain()
-	// startServer()
+func runCmd2() {
+}
+
+func runCmd3() {
+	startServer()
+}
+
+func main() {
+	// fmt.Println(len(os.Args), os.Args)
+	mcli.Add("start", runCmd1, "An awesome command cmd1")
+	mcli.Add("dummy", runCmd2, "")
+	mcli.Add("server", runCmd3, "")
+	mcli.Run()
+
+	// exepath := (os.Args[0])
+
+	// cmd := exec.Command(exepath, "start")
+	// cmd.Start()
+
+	// if len(os.Args) > 1 && os.Args[1] == "start" {
+	// 	startServer()
+	// }
 
 }
