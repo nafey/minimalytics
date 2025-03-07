@@ -11,13 +11,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"time"
 
 	"github.com/jxskiss/mcli"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/urfave/cli/v2"
 )
 
 type Message struct {
@@ -77,50 +75,6 @@ func exists(path string) (bool, error) {
 	}
 	return false, err
 }
-
-// func setup() {
-// 	homeDir, err := os.UserHomeDir()
-// 	if err != nil {
-// 		fmt.Println("Error:", err)
-// 		return
-// 	}
-
-// 	path := filepath.Join(homeDir, ".minim")
-// 	isDir, err := exists(path)
-
-// 	if err != nil {
-// 		fmt.Println("Error:", err)
-// 	}
-
-// 	if !isDir {
-// 		os.MkdirAll(path, 0755)
-// 	}
-
-// 	cntxt := &daemon.Context{
-// 		PidFileName: "minim.pid",
-// 		PidFilePerm: 0644,
-// 		LogFileName: "minim.log",
-// 		LogFilePerm: 0640,
-// 		WorkDir:     homeDir,
-// 		Umask:       027,
-// 		Args:        []string{"minim server"},
-// 	}
-
-// 	d, err := cntxt.Reborn()
-// 	if err != nil {
-// 		log.Fatal("Unable to run: ", err)
-// 	}
-// 	if d != nil {
-// 		return
-// 	}
-// 	defer cntxt.Release()
-
-// 	log.Print("- - - - - - - - - - - - - - -")
-// 	log.Print("daemon started")
-
-// 	model.Init()
-// 	model.DeleteEvents()
-// }
 
 func startServer() error {
 	homeDir, err := os.UserHomeDir()
@@ -190,93 +144,6 @@ func startServer() error {
 	return nil
 }
 
-func climain() {
-	// startServer()
-
-	app := &cli.App{
-		Commands: []*cli.Command{
-			{
-				Name:  "status",
-				Usage: "Shows the status of Minimalytics",
-				Action: func(cCtx *cli.Context) error {
-					return nil
-				},
-			},
-			{
-				Name:  "login",
-				Usage: "Generate a code to login to the Minimalytics UI/API",
-				Action: func(cCtx *cli.Context) error {
-					return nil
-				},
-			},
-			{
-				Name:  "server",
-				Usage: "Control the Minimalytics server",
-				Subcommands: []*cli.Command{
-					{
-						Name:  "start",
-						Usage: "Start the server daemon",
-						Action: func(cCtx *cli.Context) error {
-							log.Print(">>>>>>>>>>>>>>>>>> 1")
-							log.Print(runtime.Version())
-							err := startServer()
-							if err == nil {
-								print("Err is nil")
-							} else {
-								print(err)
-							}
-							return nil
-
-						},
-					},
-					{
-						Name:  "stop",
-						Usage: "stop the server daemon",
-						Action: func(cCtx *cli.Context) error {
-							return nil
-						},
-					},
-				},
-			},
-			{
-				Name:  "ui",
-				Usage: "Control the Minimalytics UI",
-				Subcommands: []*cli.Command{
-					{
-						Name:  "enable",
-						Usage: "Enable the Minimalytics UI",
-						Action: func(cCtx *cli.Context) error {
-							return nil
-						},
-					},
-					{
-						Name:  "disable",
-						Usage: "Disable the Minimalytics UI",
-						Action: func(cCtx *cli.Context) error {
-							return nil
-						},
-					},
-				},
-			},
-			{
-				Name:  "version",
-				Usage: "Print the Minimalytics version",
-				Action: func(cCtx *cli.Context) error {
-					return nil
-				},
-			},
-		},
-	}
-
-	if len(os.Args) < 2 {
-		return
-	}
-
-	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
-	}
-}
-
 func runCmd1() {
 	exepath := os.Args[0]
 	cmd := exec.Command(exepath, "server")
@@ -284,6 +151,7 @@ func runCmd1() {
 }
 
 func runCmd2() {
+	log.Print(">>>>>>>> dummy")
 }
 
 func runCmd3() {
@@ -291,19 +159,16 @@ func runCmd3() {
 }
 
 func main() {
-	// fmt.Println(len(os.Args), os.Args)
-	mcli.Add("start", runCmd1, "An awesome command cmd1")
-	mcli.Add("dummy", runCmd2, "")
-	mcli.Add("server", runCmd3, "")
+
+	mcli.Add("status", runCmd1, "View the status")
+
+	mcli.AddGroup("server", "Commands for managing Minimalytics server")
+	mcli.Add("server start", runCmd1, "Start the server")
+	mcli.Add("server stop", runCmd1, "Stop the server")
+
+	// mcli.Add("dummy", runCmd2, "")
+
+	mcli.AddHidden("execserver", runCmd3, "")
 	mcli.Run()
-
-	// exepath := (os.Args[0])
-
-	// cmd := exec.Command(exepath, "start")
-	// cmd.Start()
-
-	// if len(os.Args) > 1 && os.Args[1] == "start" {
-	// 	startServer()
-	// }
 
 }
