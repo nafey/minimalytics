@@ -38,37 +38,6 @@ type StatRequest struct {
 
 const PORT = 3333
 
-// func serveTemplate(w http.ResponseWriter, r *http.Request) {
-// 	lp := filepath.Join("templates", "layout.html")
-// 	fp := filepath.Join("templates", filepath.Clean(r.URL.Path))
-
-// 	info, err := os.Stat(fp)
-// 	if err != nil {
-// 		if os.IsNotExist(err) {
-// 			http.NotFound(w, r)
-// 			return
-// 		}
-// 	}
-
-// 	if info.IsDir() {
-// 		http.NotFound(w, r)
-// 		return
-// 	}
-
-// 	tmpl, err := template.ParseFiles(lp, fp)
-// 	if err != nil {
-// 		log.Print(err.Error())
-// 		http.Error(w, http.StatusText(500), 500)
-// 		return
-// 	}
-
-//		err = tmpl.ExecuteTemplate(w, "layout", nil)
-//		if err != nil {
-//			log.Print(err.Error())
-//			http.Error(w, http.StatusText(500), 500)
-//		}
-//	}
-
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -226,20 +195,18 @@ func startServer() error {
 	pid := os.Getpid()
 	pidStr := strconv.Itoa(pid)
 
-	// Write to file
 	err = os.WriteFile(pidFile, []byte(pidStr), 0644)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
 		return err
 	}
 
-	l := &lumberjack.Logger{
+	log.SetOutput(&lumberjack.Logger{
 		Filename:   logFile,
 		MaxSize:    20, // megabytes
 		MaxBackups: 3,
-	}
+	})
 
-	log.SetOutput(l)
 	log.Println("-------------- Starting Server ---------------")
 
 	model.Init()
@@ -254,9 +221,13 @@ func startServer() error {
 		}
 	}()
 
-	http.HandleFunc("/event/", api.Middleware(api.HandleEvent))
+	fs := http.FileServer(http.Dir("static"))
+	http.Handle("/", fs)
 
 	http.HandleFunc("/api/", api.Middleware(api.HandleAPIBase))
+
+	http.HandleFunc("/api/event/", api.Middleware(api.HandleEvent))
+
 	http.HandleFunc("/api/dashboards/", api.Middleware(api.HandleDashboard))
 	http.HandleFunc("/api/graphs/", api.Middleware(api.HandleGraphs))
 
@@ -308,26 +279,29 @@ func CmdServerStop() {
 	}
 
 	if !out {
-		fmt.Print("Server is not running")
+		fmt.Println("Server is not running")
+		return
 	}
 
 	stopServer()
 }
 
 func CmdExecServer() {
-	out := startServer()
-	log.Print(out)
+	err := startServer()
+	if err != nil {
+		log.Print(err)
+	}
 }
 
 func CmdStatus() {
 	out, err := isServerRunning()
 	if err != nil {
-		fmt.Print("Error encountered: ", err)
+		fmt.Println("Error encountered: ", err)
 	}
 
 	if out {
-		fmt.Print("Server is running")
+		fmt.Println("Server is running")
 	} else {
-		fmt.Print("Server is not running")
+		fmt.Println("Server is not running")
 	}
 }

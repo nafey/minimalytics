@@ -1,5 +1,4 @@
 *.db
-static/*
 templates/*
 .DS_Store
 build/*
