@@ -80,21 +80,43 @@ func exists(path string) (bool, error) {
 	return false, err
 }
 
-func readPID() (int, error) {
+func getMinimDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Println("Error:", err)
-		return -1, err
+		return "", err
 	}
 
 	minimDir := filepath.Join(homeDir, ".minim")
 	isDir, err := exists(minimDir)
-	if err != nil || !isDir {
+	if err != nil {
+		fmt.Println("Error:", err)
+		return "", err
+	}
+
+	if isDir {
+		return minimDir, nil
+	}
+
+	err = os.MkdirAll(minimDir, 0755)
+	if err != nil {
+		return "", err
+	}
+
+	return minimDir, nil
+}
+
+func readPID() (int, error) {
+	minimDir, err := getMinimDir()
+	if err != nil {
 		return -1, err
 	}
 
 	pidFile := filepath.Join(minimDir, "minim.pid")
 	pidBytes, err := os.ReadFile(pidFile)
+	if err != nil {
+		return -1, err
+	}
 
 	pidStr := strings.TrimSpace(string(pidBytes))
 
@@ -110,11 +132,22 @@ func isServerRunning() (bool, error) {
 
 	process, err := os.FindProcess(pid)
 	if err != nil {
+		if err.Error() == "os: process already finished" {
+			return false, nil
+		}
+
 		return false, err
+	}
+
+	if process == nil {
+		return false, nil
 	}
 
 	err = process.Signal(syscall.Signal(0))
 	if err != nil {
+		if err.Error() == "os: process already finished" {
+			return false, nil
+		}
 		return false, err
 	}
 
@@ -146,22 +179,45 @@ func isServerRunning() (bool, error) {
 	return true, nil
 }
 
+func stopServer() error {
+	pid, err := readPID()
+	if err != nil {
+		return err
+	}
+
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		fmt.Printf("Failed to find process with PID %d: %v\n", pid, err)
+		return err
+	}
+
+	err = process.Kill()
+	if err != nil {
+		fmt.Printf("Failed to kill process %d: %v\n", pid, err)
+		return err
+	}
+
+	_, err = process.Wait()
+
+	if err != nil {
+		if err.Error() == "wait: no child processes" {
+			fmt.Println("Server has been stopped")
+			return nil
+		}
+
+		fmt.Printf("Error waiting for process to terminate: %v\n", err)
+		return err
+	}
+
+	fmt.Println("Server has been stopped")
+	return nil
+}
+
 func startServer() error {
-	homeDir, err := os.UserHomeDir()
+	minimDir, err := getMinimDir()
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println("Error accessing minim directory")
 		return err
-	}
-
-	minimDir := filepath.Join(homeDir, ".minim")
-	isDir, err := exists(minimDir)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return err
-	}
-
-	if !isDir {
-		os.MkdirAll(minimDir, 0755)
 	}
 
 	pidFile := filepath.Join(minimDir, "minim.pid")
@@ -225,45 +281,65 @@ func startServer() error {
 	return nil
 }
 
-func runCmd1() {
+func cmdServerStart() {
+	out, err := isServerRunning()
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if out {
+		fmt.Println("Server is already running")
+		return
+	}
+
 	exepath := os.Args[0]
 	cmd := exec.Command(exepath, "execserver")
 	cmd.Start()
 }
 
-func runCmd2() {
-	log.Print(">>>>>>>> dummy")
+func cmdServerStop() {
+	out, err := isServerRunning()
 
-	out, err := readPID()
-	log.Print(err)
-	log.Print(out)
-
-	log.Print(">>>>>>>>>>>>> dummy 2")
-
-	isRunning, err := isServerRunning()
-	if isRunning {
-		log.Print(">>>>>>> Is Running")
-	} else {
-		log.Print(">>>>>>> Is Not Running")
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
+
+	if !out {
+		fmt.Print("Server is not running")
+	}
+
+	stopServer()
 }
 
-func runCmd3() {
+func cmdExecServer() {
 	out := startServer()
 	log.Print(out)
 }
 
-func main() {
+func cmdStatus() {
+	out, err := isServerRunning()
+	if err != nil {
+		fmt.Print("Error encountered: ", err)
+	}
 
-	mcli.Add("status", runCmd2, "View the status")
+	if out {
+		fmt.Print("Server is running")
+	} else {
+		fmt.Print("Server is not running")
+	}
+}
+
+func main() {
+	mcli.Add("status", cmdStatus, "View the status")
 
 	mcli.AddGroup("server", "Commands for managing Minimalytics server")
-	mcli.Add("server start", runCmd1, "Start the server")
-	mcli.Add("server stop", runCmd2, "Stop the server")
+	mcli.Add("server start", cmdServerStart, "Start the server")
+	mcli.Add("server stop", cmdServerStop, "Stop the server")
 
-	// mcli.Add("dummy", runCmd2, "")
+	mcli.AddHidden("execserver", cmdExecServer, "")
 
-	mcli.AddHidden("execserver", runCmd3, "")
 	mcli.Run()
-
 }
