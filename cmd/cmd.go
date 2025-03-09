@@ -304,4 +304,14 @@ func CmdStatus() {
 	} else {
 		fmt.Println("Server is not running")
 	}
+
+}
+
+func CmdUiEnable() {
+	config, err := GetConfig()
+	if err != nil {
+		fmt.Println("Error in accessing config ", err.Error())
+	}
+
+	fmt.Println(config)
 }
