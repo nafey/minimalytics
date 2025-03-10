@@ -1,14 +1,10 @@
 package model
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"time"
 )
-
-var didInit bool = false
-var db *sql.DB
 
 type EventRow struct {
 	Time  int64

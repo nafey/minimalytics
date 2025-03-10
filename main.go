@@ -2,12 +2,16 @@ package main
 
 import (
 	"minim/cmd"
+	"minim/model"
 
 	"github.com/jxskiss/mcli"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
+	// cmd.Setup()
+	model.Init()
+
 	mcli.Add("status", cmd.CmdStatus, "View the status")
 
 	mcli.AddGroup("server", "Commands for managing Minimalytics server")

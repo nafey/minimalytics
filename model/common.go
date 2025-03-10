@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 )
 
+var didInit bool = false
+var db *sql.DB
+
 func tableExists(tableName string) (bool, error) {
 	query := `SELECT name FROM sqlite_master WHERE type='table' AND name=?`
 	var name string

@@ -2,6 +2,7 @@ package model
 
 import (
 	"log"
+	"time"
 )
 
 type Config struct {
@@ -24,19 +25,49 @@ func InitConfig() {
 		log.Println("failed to create table: %w", err)
 		return
 	}
+
+	currentTime := time.Now()
+	formattedTime := currentTime.Format("2006-01-02 15:04:05")
+
+	_, err = GetConfig("PORT")
+	if err != nil {
+		_, err = db.Exec("insert into config (key, value, createdOn) values (?, ?, ?)", "PORT", "3333", formattedTime)
+
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
+	_, err = GetConfig("UI_ENABLE")
+	if err != nil {
+		_, err = db.Exec("insert into config (key, value, createdOn) values (?, ?, ?)", "UI_ENABLE", "1", formattedTime)
+
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
 	return
 }
 
-func GetConfig(key string) Config {
-
+func GetConfig(key string) (Config, error) {
 	row := db.QueryRow("select * from config where key = ?", key)
 
 	var configItem Config
 	err := row.Scan(&configItem.Id, &configItem.Key, &configItem.Value, &configItem.CreatedOn)
 
-	if err != nil {
-		panic("Not found conifg item")
-	}
+	return configItem, err
+}
 
-	return configItem
+func GetConfigValue(key string) (string, error) {
+	configItem, err := GetConfig(key)
+	return configItem.Value, err
+}
+
+func SetConfig(key string, val string) {
+	_, err := db.Exec("update config set value = ? where key = ?", val, key)
+
+	if err != nil {
+		log.Println(err)
+	}
 }

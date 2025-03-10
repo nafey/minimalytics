@@ -36,8 +36,6 @@ type StatRequest struct {
 	Event string `json:"event"`
 }
 
-const PORT = 3333
-
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -124,7 +122,11 @@ func isServerRunning() (bool, error) {
 		Timeout: 10 * time.Second,
 	}
 
-	port := strconv.Itoa(PORT)
+	port, err := model.GetConfigValue("PORT")
+	if err != nil {
+		return false, err
+	}
+
 	resp, err := client.Get("http://localhost:" + port + "/api/")
 	if err != nil {
 		return false, err
@@ -235,7 +237,11 @@ func startServer() error {
 	http.HandleFunc("/api/events/", api.Middleware(api.HandleEventDefsApi))
 	http.HandleFunc("/api/test/", api.Middleware(api.HandleTest))
 
-	port := strconv.Itoa(PORT)
+	port, err := model.GetConfigValue("PORT")
+	if err != nil {
+		return err
+	}
+
 	log.Println("Starting server on port " + port)
 
 	err = http.ListenAndServe(":"+port, nil)
@@ -308,10 +314,5 @@ func CmdStatus() {
 }
 
 func CmdUiEnable() {
-	config, err := GetConfig()
-	if err != nil {
-		fmt.Println("Error in accessing config ", err.Error())
-	}
-
-	fmt.Println(config)
+	model.SetConfig("PORT", "3334")
 }

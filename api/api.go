@@ -203,7 +203,7 @@ func HandleConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := parts[3]
-	config := model.GetConfig(key)
+	config, _ := model.GetConfig(key)
 
 	value := config.Value
 	writeResponse(w, nil, value)
