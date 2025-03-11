@@ -184,6 +184,31 @@ func stopServer() error {
 	return nil
 }
 
+func uiMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ui_enable_row, err := model.GetConfig("UI_ENABLE")
+
+		if err != nil {
+			log.Println("Unable to read UI config")
+			return
+		}
+
+		ui_enable, err := strconv.Atoi(ui_enable_row.Value)
+		if err != nil {
+			log.Println("Invalid UI config value")
+			return
+		}
+
+		if ui_enable != 1 {
+			log.Println("UI has been disabled")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+
+}
+
 func startServer() error {
 	minimDir, err := getMinimDir()
 	if err != nil {
@@ -224,7 +249,9 @@ func startServer() error {
 	}()
 
 	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/", fs)
+
+	// http.Handle("/", uiMiddleware(fs))
+	http.Handle("/", uiMiddleware(fs))
 
 	http.HandleFunc("/api/", api.Middleware(api.HandleAPIBase))
 
@@ -292,6 +319,21 @@ func CmdServerStop() {
 	stopServer()
 }
 
+func CmdServerRestart() {
+	running, err := isServerRunning()
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if running {
+		CmdServerStop()
+	}
+
+	CmdServerStart()
+}
+
 func CmdExecServer() {
 	err := startServer()
 	if err != nil {
@@ -314,5 +356,16 @@ func CmdStatus() {
 }
 
 func CmdUiEnable() {
-	model.SetConfig("PORT", "3334")
+	err := model.SetConfig("UI_ENABLE", "1")
+	if err != nil {
+		fmt.Println(err)
+
+	}
+}
+
+func CmdUiDisable() {
+	err := model.SetConfig("UI_ENABLE", "0")
+	if err != nil {
+		fmt.Println(err)
+	}
 }

@@ -64,10 +64,8 @@ func GetConfigValue(key string) (string, error) {
 	return configItem.Value, err
 }
 
-func SetConfig(key string, val string) {
+func SetConfig(key string, val string) error {
 	_, err := db.Exec("update config set value = ? where key = ?", val, key)
 
-	if err != nil {
-		log.Println(err)
-	}
+	return err
 }
