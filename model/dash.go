@@ -42,6 +42,10 @@ func InitDashboards() {
 		return
 	}
 
+	CreateDashboard(DashboardCreate{
+		Name: "First Dashboard",
+	})
+
 }
 
 func IsValidDashboardId(dashboardId int64) (bool, error) {

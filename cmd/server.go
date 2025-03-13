@@ -24,6 +24,10 @@ func isServerRunning() (bool, error) {
 		return false, err
 	}
 
+	if pid < 1 {
+		return false, nil
+	}
+
 	process, err := os.FindProcess(pid)
 	if err != nil {
 		if err.Error() == "os: process already finished" {

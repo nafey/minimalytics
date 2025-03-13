@@ -66,6 +66,16 @@ func getMinimDir() (string, error) {
 	return minimDir, nil
 }
 
+func Init() {
+	_, err := getMinimDir()
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	model.Init()
+}
+
 func readPID() (int, error) {
 	minimDir, err := getMinimDir()
 	if err != nil {
@@ -73,6 +83,19 @@ func readPID() (int, error) {
 	}
 
 	pidFile := filepath.Join(minimDir, "minim.pid")
+
+	exists, err := exists(pidFile)
+	if err != nil {
+		return -1, err
+	}
+
+	if !exists {
+		_, err := os.Create(pidFile)
+		if err != nil {
+			return -1, err
+		}
+	}
+
 	pidBytes, err := os.ReadFile(pidFile)
 	if err != nil {
 		return -1, err
@@ -80,8 +103,18 @@ func readPID() (int, error) {
 
 	pidStr := strings.TrimSpace(string(pidBytes))
 
+	if pidStr == "" {
+		return -1, nil
+	}
+
 	pid, err := strconv.Atoi(pidStr)
 	return pid, err
+}
+
+func execserver() {
+	exepath := os.Args[0]
+	cmd := exec.Command(exepath, "execserver")
+	cmd.Start()
 }
 
 func CmdServerStart() {
@@ -97,9 +130,7 @@ func CmdServerStart() {
 		return
 	}
 
-	exepath := os.Args[0]
-	cmd := exec.Command(exepath, "execserver")
-	cmd.Start()
+	execserver()
 }
 
 func CmdServerStop() {
@@ -130,7 +161,9 @@ func CmdServerRestart() {
 		CmdServerStop()
 	}
 
-	CmdServerStart()
+	execserver()
+
+	fmt.Println("Restarted the server")
 }
 
 func CmdExecServer() {

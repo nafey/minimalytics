@@ -2,7 +2,6 @@ package main
 
 import (
 	"minim/cmd"
-	"minim/model"
 
 	"github.com/jxskiss/mcli"
 	_ "github.com/mattn/go-sqlite3"
@@ -10,7 +9,7 @@ import (
 
 func main() {
 	// cmd.Setup()
-	model.Init()
+	cmd.Init()
 
 	mcli.Add("status", cmd.CmdStatus, "View the status")
 
@@ -19,9 +18,9 @@ func main() {
 	mcli.Add("server stop", cmd.CmdServerStop, "Stop the server")
 	mcli.Add("server restart", cmd.CmdServerRestart, "Restart the server")
 
-	mcli.AddGroup("ui", "Commands for managing the web UI for Minimalytics")
-	mcli.Add("ui enable", cmd.CmdUiEnable, "Enable the Minim UI")
-	mcli.Add("ui disable", cmd.CmdUiDisable, "Enable the Minim UI")
+	mcli.AddGroup("web", "Commands for managing the web UI for Minimalytics")
+	mcli.Add("web enable", cmd.CmdUiEnable, "Enable the Minim UI")
+	mcli.Add("web disable", cmd.CmdUiDisable, "Enable the Minim UI")
 
 	mcli.AddHidden("execserver", cmd.CmdExecServer, "")
 
