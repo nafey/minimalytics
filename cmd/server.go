@@ -208,10 +208,12 @@ func startServer() error {
 		}
 	}()
 
+	// buildDir := "./static"
+
 	fs := http.FileServer(http.Dir("static"))
 
 	// http.Handle("/", uiMiddleware(fs))
-	http.Handle("/", uiMiddleware(fs))
+	http.Handle("/ui/", uiMiddleware(fs))
 
 	http.HandleFunc("/api/", (api.Middleware(api.HandleAPIBase)))
 
@@ -224,6 +226,19 @@ func startServer() error {
 	http.HandleFunc("/api/events/", middleware(api.Middleware(api.HandleEventDefsApi)))
 	http.HandleFunc("/api/test/", middleware(api.Middleware(api.HandleTest)))
 
+	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// 	path := filepath.Join(buildDir, r.URL.Path)
+	// 	_, err := os.Stat(path)
+	// 	if os.IsNotExist(err) {
+	// 		http.ServeFile(w, r, filepath.Join(buildDir, "index.html"))
+	// 		return
+	// 	} else if err != nil {
+	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 		return
+	// 	}
+
+	// 	fs.ServeHTTP(w, r)
+	// })
 	port, err := model.GetConfigValue("PORT")
 	if err != nil {
 		return err
