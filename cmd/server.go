@@ -170,6 +170,28 @@ func middleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+type spaHandler struct {
+	staticPath string
+	indexPath  string
+}
+
+func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := filepath.Join(h.staticPath, r.URL.Path)
+
+	fi, err := os.Stat(path)
+	if os.IsNotExist(err) || fi.IsDir() {
+		http.ServeFile(w, r, filepath.Join(h.staticPath, h.indexPath))
+		return
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.FileServer(http.Dir(h.staticPath)).ServeHTTP(w, r)
+}
+
 func startServer() error {
 	minimDir, err := getMinimDir()
 	if err != nil {
@@ -217,7 +239,10 @@ func startServer() error {
 	r.PathPrefix("/api/events/").HandlerFunc(middleware(api.Middleware(api.HandleEventDefsApi)))
 	r.PathPrefix("/api/graphs/").HandlerFunc(middleware(api.Middleware(api.HandleGraphs)))
 	r.PathPrefix("/api/dashboards/").HandlerFunc(middleware(api.Middleware(api.HandleDashboard)))
-	r.HandleFunc("/api/", middleware(api.Middleware(api.HandleAPIBase)))
+	r.PathPrefix("/api/").HandlerFunc(middleware(api.Middleware(api.HandleAPIBase)))
+
+	spa := spaHandler{staticPath: "static", indexPath: "index.html"}
+	r.PathPrefix("/").Handler(spa)
 
 	http.Handle("/", r)
 
