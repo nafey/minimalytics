@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/natefinch/lumberjack"
 )
 
@@ -208,23 +209,33 @@ func startServer() error {
 		}
 	}()
 
-	// buildDir := "./static"
+	r := mux.NewRouter()
 
-	fs := http.FileServer(http.Dir("static"))
+	r.PathPrefix("/api/event/").HandlerFunc((api.Middleware(api.HandleEvent)))
+
+	r.PathPrefix("/api/stat/").HandlerFunc(middleware(api.Middleware(api.HandleStat)))
+	r.PathPrefix("/api/events/").HandlerFunc(middleware(api.Middleware(api.HandleEventDefsApi)))
+	r.PathPrefix("/api/graphs/").HandlerFunc(middleware(api.Middleware(api.HandleGraphs)))
+	r.PathPrefix("/api/dashboards/").HandlerFunc(middleware(api.Middleware(api.HandleDashboard)))
+	r.HandleFunc("/api/", middleware(api.Middleware(api.HandleAPIBase)))
+
+	http.Handle("/", r)
+
+	// fs := http.FileServer(http.Dir("static"))
 
 	// http.Handle("/", uiMiddleware(fs))
-	http.Handle("/ui/", uiMiddleware(fs))
+	// http.Handle("/", uiMiddleware(fs))
 
-	http.HandleFunc("/api/", (api.Middleware(api.HandleAPIBase)))
+	// http.HandleFunc("/api/", (api.Middleware(api.HandleAPIBase)))
 
-	http.HandleFunc("/api/event/", api.Middleware(api.HandleEvent))
+	// http.HandleFunc("/api/event/", api.Middleware(api.HandleEvent))
 
-	http.HandleFunc("/api/dashboards/", middleware(api.Middleware(api.HandleDashboard)))
-	http.HandleFunc("/api/graphs/", middleware(api.Middleware(api.HandleGraphs)))
+	// http.HandleFunc("/api/dashboards/", middleware(api.Middleware(api.HandleDashboard)))
+	// http.HandleFunc("/api/graphs/", middleware(api.Middleware(api.HandleGraphs)))
 
-	http.HandleFunc("/api/stat/", middleware(api.Middleware(api.HandleStat)))
-	http.HandleFunc("/api/events/", middleware(api.Middleware(api.HandleEventDefsApi)))
-	http.HandleFunc("/api/test/", middleware(api.Middleware(api.HandleTest)))
+	// http.HandleFunc("/api/stat/", middleware(api.Middleware(api.HandleStat)))
+	// http.HandleFunc("/api/events/", middleware(api.Middleware(api.HandleEventDefsApi)))
+	// http.HandleFunc("/api/test/", middleware(api.Middleware(api.HandleTest)))
 
 	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 	// 	path := filepath.Join(buildDir, r.URL.Path)
