@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/natefinch/lumberjack"
 )
 
@@ -169,6 +170,28 @@ func middleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+type spaHandler struct {
+	staticPath string
+	indexPath  string
+}
+
+func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := filepath.Join(h.staticPath, r.URL.Path)
+
+	fi, err := os.Stat(path)
+	if os.IsNotExist(err) || fi.IsDir() {
+		http.ServeFile(w, r, filepath.Join(h.staticPath, h.indexPath))
+		return
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.FileServer(http.Dir(h.staticPath)).ServeHTTP(w, r)
+}
+
 func startServer() error {
 	minimDir, err := getMinimDir()
 	if err != nil {
@@ -208,23 +231,36 @@ func startServer() error {
 		}
 	}()
 
-	// buildDir := "./static"
+	r := mux.NewRouter()
 
-	fs := http.FileServer(http.Dir("static"))
+	r.PathPrefix("/api/event/").HandlerFunc((api.Middleware(api.HandleEvent)))
+
+	r.PathPrefix("/api/stat/").HandlerFunc(middleware(api.Middleware(api.HandleStat)))
+	r.PathPrefix("/api/events/").HandlerFunc(middleware(api.Middleware(api.HandleEventDefsApi)))
+	r.PathPrefix("/api/graphs/").HandlerFunc(middleware(api.Middleware(api.HandleGraphs)))
+	r.PathPrefix("/api/dashboards/").HandlerFunc(middleware(api.Middleware(api.HandleDashboard)))
+	r.PathPrefix("/api/").HandlerFunc(middleware(api.Middleware(api.HandleAPIBase)))
+
+	spa := spaHandler{staticPath: "static", indexPath: "index.html"}
+	r.PathPrefix("/").Handler(spa)
+
+	http.Handle("/", r)
+
+	// fs := http.FileServer(http.Dir("static"))
 
 	// http.Handle("/", uiMiddleware(fs))
-	http.Handle("/ui/", uiMiddleware(fs))
+	// http.Handle("/", uiMiddleware(fs))
 
-	http.HandleFunc("/api/", (api.Middleware(api.HandleAPIBase)))
+	// http.HandleFunc("/api/", (api.Middleware(api.HandleAPIBase)))
 
-	http.HandleFunc("/api/event/", api.Middleware(api.HandleEvent))
+	// http.HandleFunc("/api/event/", api.Middleware(api.HandleEvent))
 
-	http.HandleFunc("/api/dashboards/", middleware(api.Middleware(api.HandleDashboard)))
-	http.HandleFunc("/api/graphs/", middleware(api.Middleware(api.HandleGraphs)))
+	// http.HandleFunc("/api/dashboards/", middleware(api.Middleware(api.HandleDashboard)))
+	// http.HandleFunc("/api/graphs/", middleware(api.Middleware(api.HandleGraphs)))
 
-	http.HandleFunc("/api/stat/", middleware(api.Middleware(api.HandleStat)))
-	http.HandleFunc("/api/events/", middleware(api.Middleware(api.HandleEventDefsApi)))
-	http.HandleFunc("/api/test/", middleware(api.Middleware(api.HandleTest)))
+	// http.HandleFunc("/api/stat/", middleware(api.Middleware(api.HandleStat)))
+	// http.HandleFunc("/api/events/", middleware(api.Middleware(api.HandleEventDefsApi)))
+	// http.HandleFunc("/api/test/", middleware(api.Middleware(api.HandleTest)))
 
 	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 	// 	path := filepath.Join(buildDir, r.URL.Path)
