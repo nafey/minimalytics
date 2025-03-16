@@ -3,7 +3,6 @@ package model
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"time"
 	// "minimalytics/model"
@@ -245,81 +244,84 @@ func CreateGraph(createGraph GraphCreate) (Graph, error) {
 
 }
 
-func GetGraphData(graphId int64) any {
+func GetGraphData(graphId int64) ([]TimeStat, error) {
+	var statsArray []TimeStat
 	graph, err := GetGraph(graphId)
 
 	if err != nil {
-		return err
+		return statsArray, err
 	}
 
 	event := graph.Event
 	period := graph.Period
 	length := graph.Length
 
-	currentTime := time.Now()
-	var startTime time.Time
-	var fromTime time.Time
-	var toTimestamp int64
-	var periodPrefix string
+	return GetEventData(event, period, length)
 
-	var intLength int = int(length)
+	// currentTime := time.Now()
+	// var startTime time.Time
+	// var fromTime time.Time
+	// var toTimestamp int64
+	// var periodPrefix string
 
-	if period == "DAILY" {
-		periodPrefix = "daily"
-		startTime = time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location())
-		fromTime = startTime.AddDate(0, 0, -1*int(length))
+	// var intLength int = int(length)
 
-	} else if period == "HOURLY" {
-		periodPrefix = "hourly"
-		startTime = currentTime.Truncate(time.Hour)
-		fromTime = startTime.Add(-time.Duration(intLength) * time.Hour)
+	// if period == "DAILY" {
+	// 	periodPrefix = "daily"
+	// 	startTime = time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location())
+	// 	fromTime = startTime.AddDate(0, 0, -1*int(length))
 
-	} else {
-		periodPrefix = "minutely"
-		startTime = currentTime.Truncate(time.Minute)
-		fromTime = startTime.Add(-time.Duration(intLength) * time.Minute)
+	// } else if period == "HOURLY" {
+	// 	periodPrefix = "hourly"
+	// 	startTime = currentTime.Truncate(time.Hour)
+	// 	fromTime = startTime.Add(-time.Duration(intLength) * time.Hour)
 
-	}
+	// } else {
+	// 	periodPrefix = "minutely"
+	// 	startTime = currentTime.Truncate(time.Minute)
+	// 	fromTime = startTime.Add(-time.Duration(intLength) * time.Minute)
 
-	toTimestamp = startTime.Unix()
-	fromTimestamp := time.Date(fromTime.Year(), fromTime.Month(), fromTime.Day(), 0, 0, 0, 0, fromTime.Location()).Unix()
+	// }
 
-	query := fmt.Sprintf("select * from %s_%s where time between ? and ?", periodPrefix, event)
-	rows, err := db.Query(query, fromTimestamp, toTimestamp)
-	if err != nil {
-		panic(err)
-	}
+	// toTimestamp = startTime.Unix()
+	// fromTimestamp := time.Date(fromTime.Year(), fromTime.Month(), fromTime.Day(), 0, 0, 0, 0, fromTime.Location()).Unix()
 
-	countMap := make(map[int64]int64)
-	for rows.Next() {
-		var eventRow EventRow
-		err := rows.Scan(&eventRow.Time, &eventRow.Count)
+	// query := fmt.Sprintf("select * from %s_%s where time between ? and ?", periodPrefix, event)
+	// rows, err := db.Query(query, fromTimestamp, toTimestamp)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-		if err != nil {
-			panic(err)
-		}
+	// countMap := make(map[int64]int64)
+	// for rows.Next() {
+	// 	var eventRow EventRow
+	// 	err := rows.Scan(&eventRow.Time, &eventRow.Count)
 
-		countMap[eventRow.Time] = eventRow.Count
-	}
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
 
-	statsArray := make([]TimeStat, intLength)
-	for i := 0; i < intLength; i++ {
-		iTime := startTime.Add(time.Duration(-i) * time.Minute)
-		iTimestamp := iTime.Unix()
-		iCount := int64(0)
+	// 	countMap[eventRow.Time] = eventRow.Count
+	// }
 
-		foundCount, ok := countMap[iTimestamp]
-		if ok {
-			iCount = foundCount
-		}
+	// statsArray := make([]TimeStat, intLength)
+	// for i := 0; i < intLength; i++ {
+	// 	iTime := startTime.Add(time.Duration(-i) * time.Minute)
+	// 	iTimestamp := iTime.Unix()
+	// 	iCount := int64(0)
 
-		iStatItem := TimeStat{
-			Time:  iTimestamp,
-			Count: iCount,
-		}
+	// 	foundCount, ok := countMap[iTimestamp]
+	// 	if ok {
+	// 		iCount = foundCount
+	// 	}
 
-		statsArray[i] = iStatItem
-	}
+	// 	iStatItem := TimeStat{
+	// 		Time:  iTimestamp,
+	// 		Count: iCount,
+	// 	}
 
-	return statsArray
+	// 	statsArray[i] = iStatItem
+	// }
+
+	// return statsArray
 }

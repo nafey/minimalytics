@@ -382,3 +382,82 @@ func GetMinuteStat(event string) *[60]TimeStat {
 	return &statsArray
 
 }
+
+func GetEventData(event string, period string, length int64) ([]TimeStat, error) {
+	currentTime := time.Now()
+	var startTime time.Time
+	var fromTime time.Time
+	var toTimestamp int64
+	var periodPrefix string
+
+	var intLength int = int(length)
+	statsArray := make([]TimeStat, intLength)
+
+	if period == "DAILY" {
+		periodPrefix = "daily"
+		startTime = time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location())
+		fromTime = startTime.AddDate(0, 0, -1*int(length))
+
+	} else if period == "HOURLY" {
+		periodPrefix = "hourly"
+		startTime = currentTime.Truncate(time.Hour)
+		fromTime = startTime.Add(-time.Duration(intLength) * time.Hour)
+
+	} else {
+		periodPrefix = "minutely"
+		startTime = currentTime.Truncate(time.Minute)
+		fromTime = startTime.Add(-time.Duration(intLength) * time.Minute)
+
+	}
+
+	toTimestamp = startTime.Unix()
+	fromTimestamp := time.Date(fromTime.Year(), fromTime.Month(), fromTime.Day(), 0, 0, 0, 0, fromTime.Location()).Unix()
+
+	query := fmt.Sprintf("select * from %s_%s where time between ? and ?", periodPrefix, event)
+	rows, err := db.Query(query, fromTimestamp, toTimestamp)
+	if err != nil {
+		return statsArray, err
+	}
+
+	countMap := make(map[int64]int64)
+	for rows.Next() {
+		var eventRow EventRow
+		err := rows.Scan(&eventRow.Time, &eventRow.Count)
+
+		if err != nil {
+			return statsArray, err
+		}
+
+		countMap[eventRow.Time] = eventRow.Count
+	}
+
+	for i := 0; i < intLength; i++ {
+		var iTime time.Time
+		if period == "DAILY" {
+			iTime = startTime.Add(time.Duration(-i) * time.Hour * 24)
+
+		} else if period == "HOURLY" {
+			iTime = startTime.Add(time.Duration(-i) * time.Hour)
+
+		} else {
+			iTime = startTime.Add(time.Duration(-i) * time.Minute)
+
+		}
+		iTimestamp := iTime.Unix()
+		iCount := int64(0)
+
+		foundCount, ok := countMap[iTimestamp]
+		if ok {
+			iCount = foundCount
+		}
+
+		iStatItem := TimeStat{
+			Time:  iTimestamp,
+			Count: iCount,
+		}
+
+		statsArray[i] = iStatItem
+	}
+
+	return statsArray, nil
+}
