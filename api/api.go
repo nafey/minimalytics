@@ -23,7 +23,9 @@ type Response struct {
 }
 
 type StatRequest struct {
-	Event string `json:"event"`
+	Event  string `json:"event"`
+	Period string `json:"period"`
+	Length int64  `json:"length"`
 }
 
 func isNumber(s string) bool {
@@ -71,6 +73,7 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func HandleGraphs(w http.ResponseWriter, r *http.Request) {
+
 	path := r.URL.Path
 
 	trimmedPath := strings.Trim(path, "/")
@@ -117,6 +120,22 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 		case http.MethodDelete:
 			err = model.DeleteGraph(int64(graphId))
 			writeResponse(w, err, nil)
+
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+
+	} else if len(parts) == 4 {
+		graphId, err := strconv.Atoi(parts[2])
+		if err != nil {
+			writeResponse(w, err, nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			graphData, err := model.GetGraphData(int64(graphId))
+			writeResponse(w, err, graphData)
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -259,7 +278,11 @@ func HandleStat(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	if r.URL.Path == "/api/stat/daily/" {
+	if r.URL.Path == "/api/stat/" {
+		val, err := model.GetEventData(statRequest.Event, statRequest.Period, statRequest.Length)
+		writeResponse(w, err, val)
+
+	} else if r.URL.Path == "/api/stat/daily/" {
 		writeResponse(w, nil, model.GetDailyStat(statRequest.Event))
 
 	} else if r.URL.Path == "/api/stat/hourly/" {
