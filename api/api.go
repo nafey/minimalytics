@@ -71,6 +71,7 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func HandleGraphs(w http.ResponseWriter, r *http.Request) {
+
 	path := r.URL.Path
 
 	trimmedPath := strings.Trim(path, "/")
@@ -117,6 +118,22 @@ func HandleGraphs(w http.ResponseWriter, r *http.Request) {
 		case http.MethodDelete:
 			err = model.DeleteGraph(int64(graphId))
 			writeResponse(w, err, nil)
+
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+
+	} else if len(parts) == 4 {
+		graphId, err := strconv.Atoi(parts[2])
+		if err != nil {
+			writeResponse(w, err, nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			graphData := model.GetGraphData(int64(graphId))
+			writeResponse(w, err, graphData)
 
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

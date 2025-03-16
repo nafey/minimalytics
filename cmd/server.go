@@ -246,35 +246,6 @@ func startServer() error {
 
 	http.Handle("/", r)
 
-	// fs := http.FileServer(http.Dir("static"))
-
-	// http.Handle("/", uiMiddleware(fs))
-	// http.Handle("/", uiMiddleware(fs))
-
-	// http.HandleFunc("/api/", (api.Middleware(api.HandleAPIBase)))
-
-	// http.HandleFunc("/api/event/", api.Middleware(api.HandleEvent))
-
-	// http.HandleFunc("/api/dashboards/", middleware(api.Middleware(api.HandleDashboard)))
-	// http.HandleFunc("/api/graphs/", middleware(api.Middleware(api.HandleGraphs)))
-
-	// http.HandleFunc("/api/stat/", middleware(api.Middleware(api.HandleStat)))
-	// http.HandleFunc("/api/events/", middleware(api.Middleware(api.HandleEventDefsApi)))
-	// http.HandleFunc("/api/test/", middleware(api.Middleware(api.HandleTest)))
-
-	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	// 	path := filepath.Join(buildDir, r.URL.Path)
-	// 	_, err := os.Stat(path)
-	// 	if os.IsNotExist(err) {
-	// 		http.ServeFile(w, r, filepath.Join(buildDir, "index.html"))
-	// 		return
-	// 	} else if err != nil {
-	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 		return
-	// 	}
-
-	// 	fs.ServeHTTP(w, r)
-	// })
 	port, err := model.GetConfigValue("PORT")
 	if err != nil {
 		return err
