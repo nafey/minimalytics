@@ -20,7 +20,7 @@ func main() {
 
 	mcli.AddGroup("web", "Commands for managing the web UI for Minimalytics")
 	mcli.Add("web enable", cmd.CmdUiEnable, "Enable the Minim UI")
-	mcli.Add("web disable", cmd.CmdUiDisable, "Enable the Minim UI")
+	mcli.Add("web disable", cmd.CmdUiDisable, "Disable the Minim UI")
 
 	mcli.AddHidden("execserver", cmd.CmdExecServer, "")
 

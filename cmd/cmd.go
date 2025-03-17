@@ -191,6 +191,14 @@ func CmdStatus() {
 		fmt.Println("Server is not running")
 	}
 
+	minimDir, err := getMinimDir()
+
+	if err != nil {
+		fmt.Println("Unable to access minim dir at.", minimDir)
+	} else {
+		fmt.Println("Minimalytics directory location:", minimDir)
+	}
+
 }
 
 func CmdUiEnable() {
