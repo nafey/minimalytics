@@ -13,6 +13,7 @@ Minimalytics is a **standalone minimalist analytics tool** built on SQLite. Desi
 - **Scalable**: Supports over a billion events per month with a minimal storage footprint (~20 MB).
 - **Lightweight**: Built with efficiency in mind, ensuring low memory and storage usage.
 
+![image](https://raw.githubusercontent.com/nafey/minimalytics/refs/heads/master/docs/images/ui.png)
 ---
 
 ## Installation
