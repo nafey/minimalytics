@@ -117,6 +117,11 @@ func execserver() {
 	cmd.Start()
 }
 
+func GetVersion() (string, error) {
+	data, err := os.ReadFile("VERSION")
+	return string(data), err
+}
+
 func CmdServerStart() {
 	out, err := isServerRunning()
 
@@ -214,4 +219,15 @@ func CmdUiDisable() {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func CmdVersion() {
+	data, err := GetVersion()
+	if err != nil {
+		fmt.Println("Error reading file:", err)
+		return
+	}
+
+	fmt.Print("Minimalytics version: ")
+	fmt.Println(string(data))
 }

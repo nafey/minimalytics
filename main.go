@@ -11,6 +11,7 @@ func main() {
 	// cmd.Setup()
 	cmd.Init()
 
+	mcli.Add("version", cmd.CmdVersion, "View the version details")
 	mcli.Add("status", cmd.CmdStatus, "View the status")
 
 	mcli.AddGroup("server", "Commands for managing Minimalytics server")
