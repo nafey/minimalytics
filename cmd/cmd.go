@@ -73,7 +73,10 @@ func Init() {
 		fmt.Println(err)
 	}
 
-	model.Init()
+	err = model.Init()
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func readPID() (int, error) {

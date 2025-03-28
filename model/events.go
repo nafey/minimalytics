@@ -22,7 +22,7 @@ type EventDef struct {
 	LastSeen *string `json:"lastSeen"`
 }
 
-func InitEvents() {
+func InitEvents() error {
 	query := `
 		CREATE TABLE IF NOT EXISTS events (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,9 +31,7 @@ func InitEvents() {
 		);`
 
 	_, err := db.Exec(query)
-	if err != nil {
-		log.Println("failed to create table: %w", err)
-	}
+	return err
 }
 
 func InitDailyEvent(event string) {

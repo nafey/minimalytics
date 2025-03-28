@@ -238,7 +238,7 @@ func HandleEvent(w http.ResponseWriter, r *http.Request) {
 	var t Message
 	err := decoder.Decode(&t)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 
 	event := t.Event

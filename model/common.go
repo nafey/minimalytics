@@ -2,7 +2,9 @@ package model
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,6 +12,17 @@ import (
 
 var didInit bool = false
 var db *sql.DB
+
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
+}
 
 func tableExists(tableName string) (bool, error) {
 	query := `SELECT name FROM sqlite_master WHERE type='table' AND name=?`
@@ -25,14 +38,24 @@ func tableExists(tableName string) (bool, error) {
 
 }
 
-func Init() {
+func InitCreateDb() {
+
+}
+
+func Init() error {
 	if didInit {
-		return
+		return nil
 	}
 
 	var err error
 	homeDir, _ := os.UserHomeDir()
 	dbPath := filepath.Join(homeDir, ".minim", "data.db")
+
+	exists, err := exists(dbPath)
+	if !exists {
+
+	}
+
 	db, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Println("Error:", err)
@@ -50,23 +73,36 @@ func Init() {
 
 	tab, _ := tableExists("config")
 	if !tab {
-		InitConfig()
-	}
-
-	tab, _ = tableExists("dashboards")
-	if !tab {
-		InitDashboards()
+		err = InitConfig()
+		if err != nil {
+			return err
+		}
 	}
 
 	tab, _ = tableExists("graphs")
 	if !tab {
-		InitGraphs()
+		err = InitGraphs()
+		if err != nil {
+			return err
+		}
+	}
+
+	tab, _ = tableExists("dashboards")
+	if !tab {
+		err = InitDashboards()
+		if err != nil {
+			return err
+		}
 	}
 
 	tab, _ = tableExists("events")
 	if !tab {
-		InitEvents()
+		err = InitEvents()
+		if err != nil {
+			return err
+		}
 	}
 
 	didInit = true
+	return nil
 }

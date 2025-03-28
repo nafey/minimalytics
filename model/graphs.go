@@ -3,7 +3,6 @@ package model
 import (
 	"database/sql"
 	"errors"
-	"log"
 	"time"
 	// "minimalytics/model"
 )
@@ -33,7 +32,7 @@ type GraphCreate struct {
 	Length      int64  `json:"length"`
 }
 
-func InitGraphs() {
+func InitGraphs() error {
 	query := `
 		CREATE TABLE IF NOT EXISTS graphs (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,12 +44,7 @@ func InitGraphs() {
 			createdOn TEXT
 		);`
 	_, err := db.Exec(query)
-	if err != nil {
-		log.Println("failed to create table: %w", err)
-		return
-	}
-	return
-
+	return err
 }
 
 func IsValidGraphId(graphId int64) (bool, error) {

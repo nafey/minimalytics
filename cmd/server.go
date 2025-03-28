@@ -219,7 +219,7 @@ func startServer() error {
 
 	log.Println("-------------- Starting Server ---------------")
 
-	model.Init()
+	// model.Init()
 	model.DeleteEvents()
 
 	ticker := time.NewTicker(60 * time.Second)

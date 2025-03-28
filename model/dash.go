@@ -3,7 +3,6 @@ package model
 import (
 	"database/sql"
 	"errors"
-	"log"
 	"time"
 )
 
@@ -28,7 +27,7 @@ type DashboardCreate struct {
 	Name string `json:"name"`
 }
 
-func InitDashboards() {
+func InitDashboards() error {
 	query := `
 		CREATE TABLE IF NOT EXISTS dashboards (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,14 +37,14 @@ func InitDashboards() {
 
 	_, err := db.Exec(query)
 	if err != nil {
-		log.Println("failed to create table: %w", err)
-		return
+		return err
 	}
 
-	CreateDashboard(DashboardCreate{
-		Name: "First Dashboard",
+	_, err = CreateDashboard(DashboardCreate{
+		Name: "Example Dashboard",
 	})
 
+	return err
 }
 
 func IsValidDashboardId(dashboardId int64) (bool, error) {

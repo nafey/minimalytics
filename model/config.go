@@ -1,7 +1,6 @@
 package model
 
 import (
-	"log"
 	"time"
 )
 
@@ -12,7 +11,7 @@ type Config struct {
 	CreatedOn string
 }
 
-func InitConfig() {
+func InitConfig() error {
 	query := `
 		CREATE TABLE IF NOT EXISTS config (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,8 +21,7 @@ func InitConfig() {
 		);`
 	_, err := db.Exec(query)
 	if err != nil {
-		log.Println("failed to create table: %w", err)
-		return
+		return err
 	}
 
 	currentTime := time.Now()
@@ -34,7 +32,7 @@ func InitConfig() {
 		_, err = db.Exec("insert into config (key, value, createdOn) values (?, ?, ?)", "PORT", "3333", formattedTime)
 
 		if err != nil {
-			log.Println(err)
+			return err
 		}
 	}
 
@@ -43,11 +41,11 @@ func InitConfig() {
 		_, err = db.Exec("insert into config (key, value, createdOn) values (?, ?, ?)", "UI_ENABLE", "1", formattedTime)
 
 		if err != nil {
-			log.Println(err)
+			return err
 		}
 	}
 
-	return
+	return nil
 }
 
 func GetConfig(key string) (Config, error) {
