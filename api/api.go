@@ -154,7 +154,14 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	if len(parts) == 2 {
 		switch r.Method {
 		case http.MethodGet:
-			writeResponse(w, nil, model.GetDashboards())
+			dashes, err := model.GetDashboards()
+			if err != nil {
+				writeResponse(w, err, nil)
+			} else {
+				writeResponse(w, err, dashes)
+			}
+
+			// writeResponse(w, nil, model.GetDashboards())
 
 		case http.MethodPost:
 			var postData model.DashboardCreate

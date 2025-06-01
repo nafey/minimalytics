@@ -62,26 +62,27 @@ func IsValidDashboardId(dashboardId int64) (bool, error) {
 	return exists, nil
 }
 
-func GetDashboards() []Dashboard {
+func GetDashboards() ([]Dashboard, error) {
+	var dashboards []Dashboard
+
 	rows, err := db.Query("select * from dashboards")
 	if err != nil {
-		panic(err)
+		return dashboards, err
 	}
+
 	defer rows.Close()
 
-	var dashboards []Dashboard
 	for rows.Next() {
 		var dash Dashboard
 		err := rows.Scan(&dash.Id, &dash.Name, &dash.CreatedOn) // Replace with actual fields
 
 		if err != nil {
-			// Handle scan error
-			panic(err)
+			return dashboards, err
 		}
 		dashboards = append(dashboards, dash)
 	}
 
-	return dashboards
+	return dashboards, nil
 }
 
 func GetDashboard(dashboardId int64) (DashboardGet, error) {

@@ -114,10 +114,11 @@ func readPID() (int, error) {
 	return pid, err
 }
 
-func execserver() {
+func execserver() error {
 	exepath := os.Args[0]
 	cmd := exec.Command(exepath, "execserver")
-	cmd.Start()
+	err := cmd.Start()
+	return err
 }
 
 func GetVersion() (string, error) {
@@ -138,7 +139,10 @@ func CmdServerStart() {
 		return
 	}
 
-	execserver()
+	err = execserver()
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func CmdServerStop() {

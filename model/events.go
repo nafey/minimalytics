@@ -22,7 +22,7 @@ type EventDef struct {
 	LastSeen *string `json:"lastSeen"`
 }
 
-func InitEvents() error {
+func InitEventDefs() error {
 	query := `
 		CREATE TABLE IF NOT EXISTS events (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +34,7 @@ func InitEvents() error {
 	return err
 }
 
-func InitDailyEvent(event string) {
+func InitDailyEvent(event string) error {
 	query := fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS daily_%s (
 			time INTEGER PRIMARY KEY,
@@ -45,9 +45,11 @@ func InitDailyEvent(event string) {
 	if err != nil {
 		log.Println("failed to create table: %w", err)
 	}
+
+	return err
 }
 
-func InitHourlyEvent(event string) {
+func InitHourlyEvent(event string) error {
 	query := fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS hourly_%s (
 			time INTEGER PRIMARY KEY,
@@ -58,9 +60,11 @@ func InitHourlyEvent(event string) {
 	if err != nil {
 		log.Println("failed to create table: %w", err)
 	}
+
+	return err
 }
 
-func InitMinutelyEvent(event string) {
+func InitMinutelyEvent(event string) error {
 	query := fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS minutely_%s (
 			time INTEGER PRIMARY KEY,
@@ -71,9 +75,11 @@ func InitMinutelyEvent(event string) {
 	if err != nil {
 		log.Println("failed to create table: %w", err)
 	}
+
+	return err
 }
 
-func InitEvent(event string) {
+func InitEvent(event string) error {
 	row := db.QueryRow("select * from events where event = ?", event)
 
 	var eventDef EventDef
@@ -89,6 +95,8 @@ func InitEvent(event string) {
 		// Skip
 
 	}
+
+	return err
 }
 
 func GetEventDefs() *[]EventDef {

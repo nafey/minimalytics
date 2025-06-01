@@ -97,7 +97,7 @@ func Init() error {
 
 	tab, _ = tableExists("events")
 	if !tab {
-		err = InitEvents()
+		err = InitEventDefs()
 		if err != nil {
 			return err
 		}
