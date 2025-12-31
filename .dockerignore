@@ -22,3 +22,9 @@ LICENSE
 
 # Local config
 mise.toml
+
+# Docker Compose files (not needed in app image)
+compose.yml
+.env
+.env.example
+proxy/

@@ -1,0 +1,23 @@
+services:
+  minimalytics:
+    build: .
+    environment:
+      - MINIM_PORT=${MINIM_PORT:-3333}
+    volumes:
+      - minim-data:/root/.minim
+    restart: unless-stopped
+
+  haproxy:
+    build: ./proxy
+    ports:
+      - "${PROXY_PORT:-3334}:80"
+    environment:
+      - AUTH_USER=${AUTH_USER:-admin}
+      - AUTH_PASS=${AUTH_PASS:-changeme}
+      - MINIM_PORT=${MINIM_PORT:-3333}
+    depends_on:
+      - minimalytics
+    restart: unless-stopped
+
+volumes:
+  minim-data:

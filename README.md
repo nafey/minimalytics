@@ -50,6 +50,31 @@ Minimalytics is a **standalone minimalist analytics tool** built on SQLite. Desi
 
    The volume mount persists the SQLite database across container restarts.
 
+### Docker Compose (with authentication)
+
+Docker Compose runs minimalytics with an HAProxy reverse proxy that adds basic authentication to the dashboard while leaving the event API open.
+
+1. Copy the example environment file and configure:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` with your credentials:
+   ```
+   AUTH_USER=admin
+   AUTH_PASS=your-secure-password
+   PROXY_PORT=3334
+   ```
+
+3. Start the services:
+   ```bash
+   docker compose up -d
+   ```
+
+4. Access the services:
+   - **Dashboard** (requires auth): `http://localhost:3334`
+   - **Event API** (no auth): `http://localhost:3334/api/event/`
+
 ---
 
 ## Usage
