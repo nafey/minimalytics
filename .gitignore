@@ -2,3 +2,6 @@
 templates/*
 .DS_Store
 build/*
+
+# Environment file with credentials
+.env

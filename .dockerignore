@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+build/
+minim
+
+# Documentation
+*.md
+docs/
+LICENSE
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude Code
+.claude/
+
+# Local config
+mise.toml
+
+# Docker Compose files (not needed in app image)
+compose.yml
+.env
+.env.example
+proxy/
