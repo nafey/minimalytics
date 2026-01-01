@@ -36,7 +36,7 @@ func InitEventDefs() error {
 
 func InitDailyEvent(event string) error {
 	query := fmt.Sprintf(`
-		CREATE TABLE IF NOT EXISTS daily_%s (
+		CREATE TABLE IF NOT EXISTS "daily_%s" (
 			time INTEGER PRIMARY KEY,
 			count INTEGER
 		);`, event)
@@ -51,7 +51,7 @@ func InitDailyEvent(event string) error {
 
 func InitHourlyEvent(event string) error {
 	query := fmt.Sprintf(`
-		CREATE TABLE IF NOT EXISTS hourly_%s (
+		CREATE TABLE IF NOT EXISTS "hourly_%s" (
 			time INTEGER PRIMARY KEY,
 			count INTEGER
 		);`, event)
@@ -66,7 +66,7 @@ func InitHourlyEvent(event string) error {
 
 func InitMinutelyEvent(event string) error {
 	query := fmt.Sprintf(`
-		CREATE TABLE IF NOT EXISTS minutely_%s (
+		CREATE TABLE IF NOT EXISTS "minutely_%s" (
 			time INTEGER PRIMARY KEY,
 			count INTEGER
 		);`, event)
@@ -155,14 +155,14 @@ func DeleteEvents() {
 	for _, event := range events {
 		// fmt.Printf("%d: %s\n", i+1, event)
 		cutoffTime := time.Now().Unix() - 3600
-		query := fmt.Sprintf("delete from minutely_%s where time < ?", event)
+		query := fmt.Sprintf(`delete from "minutely_%s" where time < ?`, event)
 		_, err := db.Exec(query, cutoffTime)
 		if err != nil {
 			panic(err)
 		}
 
 		cutoffTimeH := time.Now().Unix() - 3600*60
-		query = fmt.Sprintf("delete from hourly_%s where time < ?", event)
+		query = fmt.Sprintf(`delete from "hourly_%s" where time < ?`, event)
 		_, err = db.Exec(query, cutoffTimeH)
 		if err != nil {
 			panic(err)
@@ -178,18 +178,18 @@ func SubmitDailyEvent(event string) {
 	dayStart := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location())
 	time := dayStart.Unix()
 
-	query := fmt.Sprintf("select * from daily_%s where time = ?", event)
+	query := fmt.Sprintf(`select * from "daily_%s" where time = ?`, event)
 
 	row := db.QueryRow(query, time)
 	var eventRow EventRow
 	err := row.Scan(&eventRow.Time, &eventRow.Count)
 	if err != nil {
-		query = fmt.Sprintf("insert into daily_%s (time, count) values (?, ?)", event)
+		query = fmt.Sprintf(`insert into "daily_%s" (time, count) values (?, ?)`, event)
 		db.Exec(query, time, 1)
 
 	} else {
 		nextCount := eventRow.Count + 1
-		query = fmt.Sprintf("update daily_%s set count = ? where time = ?", event)
+		query = fmt.Sprintf(`update "daily_%s" set count = ? where time = ?`, event)
 		db.Exec(query, nextCount, time)
 	}
 }
@@ -200,18 +200,18 @@ func SubmitHourlyEvent(event string) {
 	hourStart := currentTime.Truncate(time.Hour)
 	time := hourStart.Unix()
 
-	query := fmt.Sprintf("select * from hourly_%s where time = ?", event)
+	query := fmt.Sprintf(`select * from "hourly_%s" where time = ?`, event)
 
 	row := db.QueryRow(query, time)
 	var eventRow EventRow
 	err := row.Scan(&eventRow.Time, &eventRow.Count)
 	if err != nil {
-		query = fmt.Sprintf("insert into hourly_%s (time, count) values (?, ?)", event)
+		query = fmt.Sprintf(`insert into "hourly_%s" (time, count) values (?, ?)`, event)
 		db.Exec(query, time, 1)
 
 	} else {
 		nextCount := eventRow.Count + 1
-		query = fmt.Sprintf("update hourly_%s set count = ? where time = ?", event)
+		query = fmt.Sprintf(`update "hourly_%s" set count = ? where time = ?`, event)
 		db.Exec(query, nextCount, time)
 
 	}
@@ -223,18 +223,18 @@ func SubmitMinuteEvent(event string) {
 	minuteStart := currentTime.Truncate(time.Minute)
 	time := minuteStart.Unix()
 
-	query := fmt.Sprintf("select * from minutely_%s where time = ?", event)
+	query := fmt.Sprintf(`select * from "minutely_%s" where time = ?`, event)
 
 	row := db.QueryRow(query, time)
 	var eventRow EventRow
 	err := row.Scan(&eventRow.Time, &eventRow.Count)
 	if err != nil {
-		query = fmt.Sprintf("insert into minutely_%s (time, count) values (?, ?)", event)
+		query = fmt.Sprintf(`insert into "minutely_%s" (time, count) values (?, ?)`, event)
 		db.Exec(query, time, 1)
 
 	} else {
 		nextCount := eventRow.Count + 1
-		query = fmt.Sprintf("update minutely_%s set count = ? where time = ?", event)
+		query = fmt.Sprintf(`update "minutely_%s" set count = ? where time = ?`, event)
 		db.Exec(query, nextCount, time)
 
 	}
@@ -249,7 +249,7 @@ func GetDailyStat(event string) *[60]TimeStat {
 	fromTime := dayStart.AddDate(0, 0, -60)
 	fromTimestamp := time.Date(fromTime.Year(), fromTime.Month(), fromTime.Day(), 0, 0, 0, 0, fromTime.Location()).Unix()
 
-	query := fmt.Sprintf("select * from daily_%s where time between ? and ?", event)
+	query := fmt.Sprintf(`select * from "daily_%s" where time between ? and ?`, event)
 
 	rows, err := db.Query(query, fromTimestamp, toTimestamp)
 	if err != nil {
@@ -299,7 +299,7 @@ func GetHourlyStat(event string) *[60]TimeStat {
 	fromTime := hourStart.Add(-60 * time.Hour)
 	fromTimestamp := fromTime.Unix()
 
-	query := fmt.Sprintf("select * from hourly_%s where time between ? and ?", event)
+	query := fmt.Sprintf(`select * from "hourly_%s" where time between ? and ?`, event)
 
 	rows, err := db.Query(query, fromTimestamp, toTimestamp)
 	if err != nil {
@@ -348,7 +348,7 @@ func GetMinuteStat(event string) *[60]TimeStat {
 	fromTime := minuteStart.Add(-60 * time.Minute)
 	fromTimestamp := fromTime.Unix()
 
-	query := fmt.Sprintf("select * from minutely_%s where time between ? and ?", event)
+	query := fmt.Sprintf(`select * from "minutely_%s" where time between ? and ?`, event)
 
 	rows, err := db.Query(query, fromTimestamp, toTimestamp)
 	if err != nil {
@@ -419,7 +419,7 @@ func GetEventData(event string, period string, length int64) ([]TimeStat, error)
 	toTimestamp = startTime.Unix()
 	fromTimestamp := time.Date(fromTime.Year(), fromTime.Month(), fromTime.Day(), 0, 0, 0, 0, fromTime.Location()).Unix()
 
-	query := fmt.Sprintf("select * from %s_%s where time between ? and ?", periodPrefix, event)
+	query := fmt.Sprintf(`select * from "%s_%s" where time between ? and ?`, periodPrefix, event)
 	rows, err := db.Query(query, fromTimestamp, toTimestamp)
 	if err != nil {
 		return statsArray, err
