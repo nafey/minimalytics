@@ -36,6 +36,20 @@ Minimalytics is a **standalone minimalist analytics tool** built on SQLite. Desi
    sudo mv build/minim /usr/local/bin/
    ```
 
+### Docker
+
+1. Build the image:
+   ```bash
+   docker build -t minimalytics .
+   ```
+
+2. Run the container:
+   ```bash
+   docker run -p 3333:3333 -v minim-data:/root/.minim minimalytics
+   ```
+
+   The volume mount persists the SQLite database across container restarts.
+
 ---
 
 ## Usage
